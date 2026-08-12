@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "refactor-cli"
 version = "0.1.0"
 description = "Deterministic refactoring CLI using LibCST."
-readme = "docs/refactoring_tools.md"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "autoimport",
