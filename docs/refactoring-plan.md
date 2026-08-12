@@ -101,9 +101,38 @@ Validation:
 - `PYTHONPATH=src python -m refactor_cli tree`
 - `PYTHONPATH=src python -m refactor_cli --help`
 
+Status:
+
+- complete
+
 ### Phase 3: Discovery Extraction
 
 Extract config loading, path resolution, Python file discovery, CST loading, and tree generation.
+
+Scope:
+
+- `load_config`
+- `resolve_project_root`
+- `discover_python_files`
+- `load_module`
+- `statement_name`
+- `is_import_statement`
+- `render_statements`
+- `build_tree`
+- `print_tree`
+- `generate_tree_payload`
+
+Expected outcome:
+
+- project scanning and CST tree generation move behind a dedicated module boundary
+- orchestration code stops owning discovery concerns directly
+
+Validation:
+
+- `python -m py_compile src/refactor_cli/__init__.py src/refactor_cli/discovery.py src/refactor_cli/runtime_tools.py src/refactor_cli/file_io.py src/refactor_cli/tree_codec.py src/refactor_cli/__main__.py`
+- `PYTHONPATH=src python -m refactor_cli files`
+- `PYTHONPATH=src python -m refactor_cli tree`
+- `PYTHONPATH=src python -m refactor_cli --help`
 
 ### Phase 4: Typed Model Introduction
 

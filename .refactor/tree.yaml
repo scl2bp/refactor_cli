@@ -7,15 +7,6 @@ files:
   - SimpleStatementLine DEFAULT_TREE_PATCH
   - SimpleStatementLine DEFAULT_TREE_EDIT
   - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
-  - FunctionDef load_config
-  - FunctionDef resolve_project_root
-  - FunctionDef discover_python_files
-  - FunctionDef load_module
-  - FunctionDef statement_name
-  - FunctionDef is_import_statement
-  - FunctionDef render_statements
-  - FunctionDef build_tree
-  - FunctionDef print_tree
   - FunctionDef split_nodes_by_symbol
   - FunctionDef build_target_module
   - FunctionDef build_updated_source
@@ -33,7 +24,6 @@ files:
   - FunctionDef run_tree_transition
   - FunctionDef post_apply_safeguards
   - FunctionDef detect_file_deletions_from_trees
-  - FunctionDef generate_tree_payload
   - FunctionDef apply_extract_top_level_symbols
   - FunctionDef _strip_self_imports
   - FunctionDef apply_extract_top_level_symbols_emend
@@ -46,6 +36,17 @@ files:
   - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
+  src/refactor_cli/discovery.py:
+  - FunctionDef load_config
+  - FunctionDef resolve_project_root
+  - FunctionDef discover_python_files
+  - FunctionDef load_module
+  - FunctionDef statement_name
+  - FunctionDef is_import_statement
+  - FunctionDef render_statements
+  - FunctionDef build_tree
+  - FunctionDef print_tree
+  - FunctionDef generate_tree_payload
   src/refactor_cli/file_io.py:
   - FunctionDef ensure_parent
   - FunctionDef load_json
