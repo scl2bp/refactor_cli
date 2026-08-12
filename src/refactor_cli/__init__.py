@@ -32,6 +32,23 @@ def _python_module_available(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
 
 
+def resolve_emend_runner() -> list[str] | None:
+    """Resolve how to invoke emend in the current environment.
+
+    Preference order:
+    1) `uvx emend` (tool-managed ephemeral execution)
+    2) `emend` CLI (typically from `pip install emend`)
+    3) `python -m emend` (module entrypoint)
+    """
+    if shutil.which("uvx") is not None:
+        return ["uvx", "emend"]
+    if shutil.which("emend") is not None:
+        return ["emend"]
+    if _python_module_available("emend"):
+        return [sys.executable, "-m", "emend"]
+    return None
+
+
 def ensure_runtime_dependencies(*, require_emend: bool) -> None:
     """Fail fast when external runtime tools are missing.
 
@@ -48,9 +65,9 @@ def ensure_runtime_dependencies(*, require_emend: bool) -> None:
             "missing python module: autoimport (pip install autoimport)"
         )
 
-    if require_emend and shutil.which("uvx") is None:
+    if require_emend and resolve_emend_runner() is None:
         missing.append(
-            "missing executable: uvx (install uv so 'uvx emend ...' commands can run)"
+            "missing emend runner: install one of: uv (for uvx), emend CLI, or python module emend"
         )
 
     if missing:
@@ -908,13 +925,17 @@ def apply_extract_top_level_symbols_emend(root: Path, operation: dict) -> None:
     target = operation["target"]
     symbols = operation["symbols"]
     target_path = root / target
+    emend_runner = resolve_emend_runner()
+    if emend_runner is None:
+        raise RuntimeError(
+            "Emend backend requested but no emend runner found (uvx, emend CLI, or python -m emend)."
+        )
 
     moved = 0
     for symbol in symbols:
         selector = f"{source}::{symbol}"
         cmd = [
-            "uvx",
-            "emend",
+            *emend_runner,
             "edit",
             "mv",
             selector,
