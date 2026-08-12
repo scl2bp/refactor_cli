@@ -134,19 +134,42 @@ Validation:
 - `PYTHONPATH=src python -m refactor_cli tree`
 - `PYTHONPATH=src python -m refactor_cli --help`
 
-### Phase 4: Typed Model Introduction
+Status:
+
+- complete
+
+### Phase 4: Safeguards Extraction
+
+Extract the post-apply validation pipeline into a dedicated safeguards module.
+
+Scope:
+
+- `post_apply_safeguards`
+
+Expected outcome:
+
+- affected-file validation becomes a dedicated workflow boundary
+- orchestration code depends on safeguards rather than implementing them inline
+
+Validation:
+
+- `python -m py_compile src/refactor_cli/__init__.py src/refactor_cli/safeguards.py src/refactor_cli/discovery.py src/refactor_cli/runtime_tools.py src/refactor_cli/file_io.py src/refactor_cli/tree_codec.py src/refactor_cli/__main__.py`
+- `PYTHONPATH=src python -m refactor_cli --help`
+- `PYTHONPATH=src python -m refactor_cli tree`
+
+### Phase 5: Typed Model Introduction
 
 Replace implicit dictionary contracts for tree documents, operations, and edits with typed models.
 
-### Phase 5: Move Backend Separation
+### Phase 6: Move Backend Separation
 
 Separate internal and Emend move backends behind composable interfaces or adapter functions.
 
-### Phase 6: Transition Workflow Extraction
+### Phase 7: Transition Workflow Extraction
 
 Move tree delta interpretation and apply/verify orchestration into a dedicated workflow module.
 
-### Phase 7: Thin CLI Shell
+### Phase 8: Thin CLI Shell
 
 Move parser and command handlers into `cli.py`, leaving `__init__.py` as a small export surface.
 

@@ -37,11 +37,9 @@ from refactor_cli.runtime_tools import (
     _run_ruff_fix_imports,
     ensure_runtime_dependencies,
     resolve_emend_runner,
-    run_autoimport_on_file,
-    run_compile_check_on_file,
     run_formatter_on_file,
-    run_lint_check_on_file,
 )
+from refactor_cli.safeguards import post_apply_safeguards
 from refactor_cli.tree_codec import (
     load_tree_yaml,
     write_tree_yaml,
@@ -499,40 +497,6 @@ def run_tree_transition(
                         f"    Suggestion: from src.mobiliti.api.models import {', '.join(sorted_names)}"
                     )
         print("\n  Run 'ruff check --fix' or manually add imports to resolve.\n")
-
-
-def post_apply_safeguards(
-    root: Path, affected_rel_paths: list[str]
-) -> dict[str, list[str]]:
-    """Run formatter, autoimport, compile, and lint on all affected files.
-
-    Returns a dict mapping rel_path -> list of lint violations (empty if none).
-    Does not raise; collects issues for reporting at the end.
-    """
-    unique_paths = sorted(set(affected_rel_paths))
-    all_violations: dict[str, list[str]] = {}
-
-    for rel_path in unique_paths:
-        if not rel_path.endswith(".py"):
-            continue
-        file_path = root / rel_path
-        if not file_path.exists():
-            print(f"  safeguard skip (missing): {rel_path}")
-            continue
-        print(f"  safeguard format:    {rel_path}")
-        run_formatter_on_file(file_path)
-        print(f"  safeguard autoimport:{rel_path}")
-        run_autoimport_on_file(file_path)
-        print(f"  safeguard compile:   {rel_path}")
-        run_compile_check_on_file(file_path)
-        print(f"  safeguard lint:      {rel_path}")
-        violations = run_lint_check_on_file(file_path)
-        if violations:
-            all_violations[rel_path] = violations
-            for violation_line in violations:
-                print(f"    {violation_line}")
-
-    return all_violations
 
 
 def detect_file_deletions_from_trees(before_tree: dict, after_tree: dict) -> list[str]:

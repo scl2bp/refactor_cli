@@ -22,7 +22,6 @@ files:
   - FunctionDef tree_docs_differ
   - FunctionDef build_after_tree_from_edit
   - FunctionDef run_tree_transition
-  - FunctionDef post_apply_safeguards
   - FunctionDef detect_file_deletions_from_trees
   - FunctionDef apply_extract_top_level_symbols
   - FunctionDef _strip_self_imports
@@ -64,6 +63,8 @@ files:
   - FunctionDef run_autoimport_on_file
   - FunctionDef run_lint_check_on_file
   - FunctionDef _run_ruff_fix_imports
+  src/refactor_cli/safeguards.py:
+  - FunctionDef post_apply_safeguards
   src/refactor_cli/tree_codec.py:
   - FunctionDef _node_to_compact
   - FunctionDef _compact_to_node
