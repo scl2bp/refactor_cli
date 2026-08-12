@@ -2,7 +2,6 @@ from pathlib import Path
 
 import yaml
 
-from refactor_cli import _compact_to_node, _node_to_compact
 from refactor_cli.file_io import ensure_parent, load_yaml
 
 
