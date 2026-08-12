@@ -65,9 +65,41 @@ Validation:
 - `PYTHONPATH=src python -m refactor_cli --help`
 - `PYTHONPATH=src python -c "import refactor_cli as r; r.ensure_runtime_dependencies(require_emend=True)"`
 
+Status:
+
+- complete
+
 ### Phase 2: Persistence and Tree Codec Extraction
 
 Extract JSON/YAML helpers and compact tree serialization to dedicated modules.
+
+Scope:
+
+- `file_io.py`
+  - `ensure_parent`
+  - `load_json`
+  - `write_json`
+  - `load_yaml`
+  - `write_yaml`
+  - `yaml_text`
+  - `archive_patch`
+- `tree_codec.py`
+  - `_node_to_compact`
+  - `_compact_to_node`
+  - `write_tree_yaml`
+  - `load_tree_yaml`
+
+Expected outcome:
+
+- persistence concerns move out of the workflow module
+- tree document encoding/decoding becomes a dedicated boundary
+- `__init__.py` becomes more orchestration-focused without changing behavior
+
+Validation:
+
+- `python -m py_compile src/refactor_cli/__init__.py src/refactor_cli/file_io.py src/refactor_cli/tree_codec.py src/refactor_cli/runtime_tools.py src/refactor_cli/__main__.py`
+- `PYTHONPATH=src python -m refactor_cli tree`
+- `PYTHONPATH=src python -m refactor_cli --help`
 
 ### Phase 3: Discovery Extraction
 

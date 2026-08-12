@@ -7,12 +7,6 @@ files:
   - SimpleStatementLine DEFAULT_TREE_PATCH
   - SimpleStatementLine DEFAULT_TREE_EDIT
   - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
-  - FunctionDef ensure_parent
-  - FunctionDef load_json
-  - FunctionDef write_json
-  - FunctionDef load_yaml
-  - FunctionDef write_yaml
-  - FunctionDef yaml_text
   - FunctionDef _node_to_compact
   - FunctionDef _compact_to_node
   - FunctionDef write_tree_yaml
@@ -41,7 +35,6 @@ files:
   - FunctionDef tree_docs_differ
   - FunctionDef build_after_tree_from_edit
   - FunctionDef run_tree_transition
-  - FunctionDef archive_patch
   - FunctionDef post_apply_safeguards
   - FunctionDef detect_file_deletions_from_trees
   - FunctionDef generate_tree_payload
@@ -57,6 +50,14 @@ files:
   - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
+  src/refactor_cli/file_io.py:
+  - FunctionDef ensure_parent
+  - FunctionDef load_json
+  - FunctionDef write_json
+  - FunctionDef load_yaml
+  - FunctionDef write_yaml
+  - FunctionDef yaml_text
+  - FunctionDef archive_patch
   src/refactor_cli/runtime_tools.py:
   - FunctionDef _python_module_available
   - FunctionDef resolve_emend_runner
