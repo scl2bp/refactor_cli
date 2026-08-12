@@ -980,22 +980,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         "python_files": {
             "include": ["main.py", "src/**/*.py", "tests/**/*.py", "tools/**/*.py"],
             "exclude": [".venv/**", "**/__pycache__/**", "build/**", "dist/**"],
-        },
-        "operations": {},
-        "examples": {
-            "extract_top_level_symbols": {
-                "type": "extract_top_level_symbols",
-                "source": "path/to/source.py",
-                "target": "path/to/target.py",
-                "symbols": ["SymbolA", "SymbolB"],
-                "source_import_block": "from pkg.target import SymbolA, SymbolB",
-                "target_prelude": [
-                    '"""Extracted symbols module."""',
-                    "",
-                    "from __future__ import annotations",
-                ],
-            }
-        },
+        }
     }
 
     write_json(config_path, template)

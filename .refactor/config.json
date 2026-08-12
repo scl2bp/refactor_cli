@@ -1,0 +1,14 @@
+{
+  "project_root": "..",
+  "python_files": {
+    "include": [
+      "src/**/*.py"
+    ],
+    "exclude": [
+      ".venv/**",
+      "**/__pycache__/**",
+      "build/**",
+      "dist/**"
+    ]
+  }
+}
