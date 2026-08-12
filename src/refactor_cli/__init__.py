@@ -9,7 +9,9 @@ Workflow:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,39 @@ DEFAULT_TREE = Path(".refactor/tree.yaml")
 DEFAULT_TREE_PATCH = Path(".refactor/patches/latest.tree.patch.yaml")
 DEFAULT_TREE_EDIT = Path(".refactor/patches/latest.tree.edit.yaml")
 DEFAULT_APPLIED_PATCHES_DIR = Path(".refactor/patches/applied")
+
+
+def _python_module_available(module_name: str) -> bool:
+    return importlib.util.find_spec(module_name) is not None
+
+
+def ensure_runtime_dependencies(*, require_emend: bool) -> None:
+    """Fail fast when external runtime tools are missing.
+
+    The CLI invokes several tools via subprocess (python -m ruff/autoimport and uvx emend).
+    This preflight keeps failures deterministic and actionable.
+    """
+    missing: list[str] = []
+
+    if not _python_module_available("ruff"):
+        missing.append("missing python module: ruff (pip install ruff)")
+
+    if not _python_module_available("autoimport"):
+        missing.append(
+            "missing python module: autoimport (pip install autoimport)"
+        )
+
+    if require_emend and shutil.which("uvx") is None:
+        missing.append(
+            "missing executable: uvx (install uv so 'uvx emend ...' commands can run)"
+        )
+
+    if missing:
+        details = "\n  - " + "\n  - ".join(missing)
+        raise RuntimeError(
+            "Runtime dependency check failed. Install required tools before running:\n"
+            f"{details}"
+        )
 
 
 def ensure_parent(path: Path) -> None:
@@ -978,6 +1013,8 @@ def cmd_tree(args: argparse.Namespace) -> int:
 
 def cmd_format(args: argparse.Namespace) -> int:
     """Format all discovered Python files using ruff."""
+    ensure_runtime_dependencies(require_emend=False)
+
     config_path = Path(args.config)
     config = load_config(config_path)
     root = resolve_project_root(config_path, config)
@@ -998,6 +1035,8 @@ def cmd_format(args: argparse.Namespace) -> int:
 
 
 def cmd_apply_tree_patch(args: argparse.Namespace) -> int:
+    ensure_runtime_dependencies(require_emend=args.move_backend == "emend")
+
     config_path = Path(args.config)
     config = load_config(config_path)
     root = resolve_project_root(config_path, config)
@@ -1076,6 +1115,8 @@ def cmd_apply_tree_patch(args: argparse.Namespace) -> int:
 
 
 def cmd_apply_tree_edit(args: argparse.Namespace) -> int:
+    ensure_runtime_dependencies(require_emend=args.move_backend == "emend")
+
     config_path = Path(args.config)
     config = load_config(config_path)
     root = resolve_project_root(config_path, config)
