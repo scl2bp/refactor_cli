@@ -7,10 +7,6 @@ files:
   - SimpleStatementLine DEFAULT_TREE_PATCH
   - SimpleStatementLine DEFAULT_TREE_EDIT
   - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
-  - FunctionDef _node_to_compact
-  - FunctionDef _compact_to_node
-  - FunctionDef write_tree_yaml
-  - FunctionDef load_tree_yaml
   - FunctionDef load_config
   - FunctionDef resolve_project_root
   - FunctionDef discover_python_files
@@ -67,3 +63,8 @@ files:
   - FunctionDef run_autoimport_on_file
   - FunctionDef run_lint_check_on_file
   - FunctionDef _run_ruff_fix_imports
+  src/refactor_cli/tree_codec.py:
+  - FunctionDef _node_to_compact
+  - FunctionDef _compact_to_node
+  - FunctionDef write_tree_yaml
+  - FunctionDef load_tree_yaml

@@ -15,11 +15,9 @@ import tempfile
 from pathlib import Path
 
 import libcst as cst
-import yaml
 
 from refactor_cli.file_io import (
     archive_patch,
-    ensure_parent,
     load_json,
     load_yaml,
     write_json,
@@ -32,6 +30,10 @@ from refactor_cli.runtime_tools import (
     run_compile_check_on_file,
     run_formatter_on_file,
     run_lint_check_on_file,
+)
+from refactor_cli.tree_codec import (
+    load_tree_yaml,
+    write_tree_yaml,
 )
 
 
@@ -46,53 +48,6 @@ DEFAULT_APPLIED_PATCHES_DIR = Path(".refactor/patches/applied")
 # Format: files is a dict {path: [nodes]}
 # Each node is either a plain string  "Kind name"  (leaf)
 # or a one-key dict  {"Kind name": [children]}  (with members).
-
-
-def _node_to_compact(node: dict) -> "str | dict":
-    label = f"{node['kind']} {node['name']}"
-    children = node.get("children", [])
-    if not children:
-        return label
-    return {label: [_node_to_compact(c) for c in children]}
-
-
-def _compact_to_node(item: "str | dict") -> dict:
-    if isinstance(item, str):
-        kind, _, name = item.partition(" ")
-        return {"kind": kind, "name": name, "children": []}
-    label = next(iter(item))
-    kind, _, name = label.partition(" ")
-    return {
-        "kind": kind,
-        "name": name,
-        "children": [_compact_to_node(c) for c in item[label]],
-    }
-
-
-def write_tree_yaml(path: Path, payload: dict) -> None:
-    compact = {
-        "version": payload["version"],
-        "root": payload["root"],
-        "files": {
-            entry["path"]: [_node_to_compact(n) for n in entry.get("nodes", [])]
-            for entry in payload["files"]
-        },
-    }
-    ensure_parent(path)
-    with path.open("w", encoding="utf-8") as fh:
-        yaml.safe_dump(compact, fh, sort_keys=False, allow_unicode=False)
-
-
-def load_tree_yaml(path: Path) -> dict:
-    raw = load_yaml(path)
-    return {
-        "version": raw.get("version", 1),
-        "root": raw.get("root", ""),
-        "files": [
-            {"path": file_path, "nodes": [_compact_to_node(n) for n in (nodes or [])]}
-            for file_path, nodes in raw.get("files", {}).items()
-        ],
-    }
 
 
 def load_config(path: Path) -> dict:
