@@ -7,9 +7,6 @@ files:
   - SimpleStatementLine DEFAULT_TREE_PATCH
   - SimpleStatementLine DEFAULT_TREE_EDIT
   - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
-  - FunctionDef _python_module_available
-  - FunctionDef resolve_emend_runner
-  - FunctionDef ensure_runtime_dependencies
   - FunctionDef ensure_parent
   - FunctionDef load_json
   - FunctionDef write_json
@@ -44,17 +41,12 @@ files:
   - FunctionDef tree_docs_differ
   - FunctionDef build_after_tree_from_edit
   - FunctionDef run_tree_transition
-  - FunctionDef run_formatter_on_file
-  - FunctionDef run_compile_check_on_file
-  - FunctionDef run_autoimport_on_file
-  - FunctionDef run_lint_check_on_file
   - FunctionDef archive_patch
   - FunctionDef post_apply_safeguards
   - FunctionDef detect_file_deletions_from_trees
   - FunctionDef generate_tree_payload
   - FunctionDef apply_extract_top_level_symbols
   - FunctionDef _strip_self_imports
-  - FunctionDef _run_ruff_fix_imports
   - FunctionDef apply_extract_top_level_symbols_emend
   - FunctionDef cmd_init
   - FunctionDef cmd_files
@@ -65,3 +57,12 @@ files:
   - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
+  src/refactor_cli/runtime_tools.py:
+  - FunctionDef _python_module_available
+  - FunctionDef resolve_emend_runner
+  - FunctionDef ensure_runtime_dependencies
+  - FunctionDef run_formatter_on_file
+  - FunctionDef run_compile_check_on_file
+  - FunctionDef run_autoimport_on_file
+  - FunctionDef run_lint_check_on_file
+  - FunctionDef _run_ruff_fix_imports
