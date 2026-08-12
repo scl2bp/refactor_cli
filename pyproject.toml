@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-refactor-cli = "refactor_cli.refactor_cli:main"
+refactor-cli = "refactor_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/refactor_cli"]
