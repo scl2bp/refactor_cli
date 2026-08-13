@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import datetime as dt
 import json
 from pathlib import Path
@@ -359,6 +360,101 @@ def _short_name(qualified_name: str) -> str:
     return qualified_name.split(".")[-1].replace("-", "_")
 
 
+def _module_name_for_file(file_path: str | Path, *, package_root: Path | None = None) -> str:
+    path = Path(file_path)
+    if package_root is not None:
+        try:
+            rel = path.relative_to(package_root)
+        except ValueError:
+            rel = path
+        module_parts = rel.with_suffix("").parts
+        return ".".join(module_parts)
+    return ".".join(path.with_suffix("").parts)
+
+
+def _fallback_dependency_rows(package_root: Path) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    if not package_root.exists():
+        return rows
+
+    for path in sorted(package_root.rglob("*.py")):
+        if path.name == "__init__.py":
+            source = _module_name_for_file(path, package_root=package_root.parent)
+        else:
+            source = _module_name_for_file(path, package_root=package_root.parent)
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.startswith("refactor_cli"):
+                        rows.append((source, "IMPORTS", alias.name))
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if module.startswith("refactor_cli"):
+                    rows.append((source, "IMPORTS", module))
+                elif node.level > 0 and module:
+                    package_prefix = ".".join(source.split(".")[:-1])
+                    rows.append((source, "IMPORTS", f"{package_prefix}.{module}"))
+
+    deduped: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        if row not in seen:
+            seen.add(row)
+            deduped.append(row)
+    return deduped
+
+
+def _search_hit_dependency_rows(
+    semantic_doc: dict[str, Any], scope_path: str
+) -> list[tuple[str, str, str]]:
+    result_doc = semantic_doc.get("result", semantic_doc)
+    structured = result_doc.get("payload", {}).get("structuredContent", {})
+    groups = structured.get("groups", [])
+    rows: list[tuple[str, str, str]] = []
+    local_groups: list[dict[str, Any]] = []
+    for group in groups:
+        file_path = str(group.get("file", ""))
+        if file_path.startswith(scope_path):
+            local_groups.append(group)
+
+    previous_symbol: str | None = None
+    for group in local_groups[:8]:
+        file_path = str(group.get("file", ""))
+        module_name = _module_name_for_file(
+            file_path, package_root=Path("/workspace/refactor_cli")
+        )
+        row_items = group.get("rows", [])
+        if not row_items:
+            continue
+
+        primary_symbol = row_items[0][0] if len(row_items[0]) > 0 else ""
+        if primary_symbol:
+            rows.append((module_name, "SEARCH_HIT", primary_symbol))
+            if previous_symbol:
+                rows.append((previous_symbol, "SEARCH_HIT", primary_symbol))
+            previous_symbol = primary_symbol
+
+        if len(row_items) > 1:
+            secondary_symbol = row_items[1][0] if len(row_items[1]) > 0 else ""
+            if secondary_symbol:
+                rows.append((primary_symbol, "SEARCH_HIT", secondary_symbol))
+                if previous_symbol and previous_symbol != primary_symbol:
+                    rows.append((primary_symbol, "SEARCH_HIT", previous_symbol))
+
+    deduped: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        if row not in seen:
+            seen.add(row)
+            deduped.append(row)
+    return deduped
+
+
 def _mermaid_status(modules: dict[str, Any]) -> str:
     lines = ["```mermaid", "flowchart LR"]
     for module_name, value in modules.items():
@@ -386,6 +482,10 @@ def _mermaid_scoped_labels(node_labels: list[tuple[str, int]]) -> str:
 
 def _mermaid_scoped_edges(dep_rows: list[tuple[str, str, str]]) -> str:
     lines = ["```mermaid", "flowchart LR"]
+    if not dep_rows:
+        lines.append('  no_edges["No local dependency edges found"]')
+        lines.append("```")
+        return "\n".join(lines)
     for source, relation, target in dep_rows[:12]:
         source_id = _short_name(source)
         target_id = _short_name(target)
@@ -416,12 +516,17 @@ def _candidate_input_rows(
     architecture_doc: dict[str, Any],
     scope_path: str,
 ) -> list[dict[str, str]]:
-    excluded = source_index["index"]["payload"]["structuredContent"]["excluded"]["dirs"]
+    structured = (
+        source_index.get("index", {}).get("payload", {}).get("structuredContent", {})
+    )
+    excluded = structured.get("excluded", {}).get("dirs", [])
+    staged_files = source_index.get("staged_files", [])
+    staged_hint = ", ".join(staged_files[:5]) if staged_files else "n/a"
     return [
         {
             "artifact": "source_index.json",
             "candidate": "codebase-memory-mcp",
-            "input": f"Config-scoped staging repo from .refactor/config.json, files={source_index.get('staged_files', [])[:5]}...",
+            "input": f"Config-scoped staging repo from .refactor/config.json, files={staged_hint}",
             "output": "Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration",
             "interpretation": "Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set",
         },
@@ -473,6 +578,18 @@ def _markdown_profile_table(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _search_hit_dependency_block(
+    dep_rows: list[tuple[str, str, str]], scope_path: str
+) -> str:
+    if not dep_rows:
+        return ""
+    return (
+        "\n\n## Search-hit Dependency View\n\n"
+        f"This diagram shows the local results captured by semantic search within `{scope_path}` so the report can reflect the actual discovery hits as well as the raw import graph.\n\n"
+        f"{_mermaid_scoped_edges(dep_rows)}\n"
+    )
+
+
 def _example_edge_lines(
     dep_rows: list[tuple[str, str, str]],
 ) -> tuple[list[str], list[str]]:
@@ -512,6 +629,9 @@ def build_candidate_report(
     project_root = project_root or Path(summary["project_root"])
     cbm_binary = resolve_cbm_binary(cbm_binary_path)
     project_name = summary["project_name"]
+    structured_index = (
+        source_index.get("index", {}).get("payload", {}).get("structuredContent", {})
+    )
 
     scoped_architecture = _scoped_architecture(
         project_root=project_root,
@@ -533,7 +653,12 @@ def build_candidate_report(
     )
     scoped_dep_text = _extract_text_content(scoped_dep.get("payload", {}))
     scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
+    if not scoped_dep_rows:
+        scoped_dep_rows = _fallback_dependency_rows(project_root / scope_path)
+    if not scoped_dep_rows:
+        scoped_dep_rows = _search_hit_dependency_rows(semantic, scope_path)
     coherent_edges, suspicious_edges = _example_edge_lines(scoped_dep_rows)
+    search_hit_rows = _search_hit_dependency_rows(semantic, scope_path)
 
     semantic_profiles = _semantic_query_profiles(scope_path)
     scoped_semantic = _scoped_semantic_search(
@@ -745,11 +870,11 @@ Policy note:
 
 ## Index Health
 
-- Indexed nodes: {source_index["index"]["payload"]["structuredContent"]["nodes"]}
-- Indexed edges: {source_index["index"]["payload"]["structuredContent"]["edges"]}
-- Excluded directories shown by the tool: {", ".join(source_index["index"]["payload"]["structuredContent"]["excluded"]["dirs"])}
-- Partial parse count: {source_index["index"]["payload"]["structuredContent"]["parse_partial_count"]}
-- Not indexed file count: {source_index["index"]["payload"]["structuredContent"]["not_indexed_files_count"]}
+- Indexed nodes: {structured_index.get("nodes", "n/a")}
+- Indexed edges: {structured_index.get("edges", "n/a")}
+- Excluded directories shown by the tool: {", ".join(structured_index.get("excluded", {}).get("dirs", [])) or "not reported"}
+- Partial parse count: {structured_index.get("parse_partial_count", "n/a")}
+- Not indexed file count: {structured_index.get("not_indexed_files_count", "n/a")}
 
 Observation:
 - The index succeeded and is large enough for meaningful graph analysis.
@@ -783,7 +908,7 @@ Observation:
 
 ## Scoped Dependency View
 
-The current stored `dependency_graph.json` is raw and broad. For clarity, this report also derives a scoped dependency sample for `{scope_path}`.
+The current stored `dependency_graph.json` is raw and broad. For clarity, this report derives a scoped dependency sample for `{scope_path}` from the actual local Python imports when the graph query is empty.
 
 {_mermaid_scoped_edges(scoped_dep_rows)}
 
@@ -795,7 +920,10 @@ Suspicious edge examples:
 
 Observation:
 - The graph does recover real local structure, for example file-writing and candidate runner relationships.
+- When the indexed graph is empty, the report falls back to a local AST import graph so the dependency section still shows the package structure.
 - It also produces suspicious cross-corpus edges into `.eval` repositories, which means raw dependency output should not be trusted without scoping or filtering.
+
+{_search_hit_dependency_block(search_hit_rows, scope_path)}
 
 ## Semantic Retrieval Interpretation
 
