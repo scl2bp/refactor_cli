@@ -150,24 +150,133 @@ def _semantic_usage_guidance(scope_path: str) -> list[str]:
 def _semantic_query_profiles(scope_path: str) -> list[dict[str, str]]:
     return [
         {
-            "name": "Current default",
-            "query": "dependency, refactor, module, call graph",
+            "name": "Where is the candidate analysis report assembled?",
+            "query": "candidate report markdown mermaid render",
             "scope": scope_path,
-            "why": "broad discovery query used by candidate-phase-a",
+            "why": "should surface report-building code and the report output path",
+            "structural_pattern": "build_candidate_report|cmd_candidate_report|candidate_report",
         },
         {
-            "name": "Package-local structure",
-            "query": "candidate, report, scope, architecture",
+            "name": "Where does Phase A collect and persist artifacts?",
+            "query": "candidate phase a source index semantic retrieval architecture report",
             "scope": scope_path,
-            "why": "looks for file names and code paths that describe the package's own analysis surfaces",
+            "why": "should surface the orchestration function that runs the analysis pipeline",
+            "structural_pattern": "cmd_candidate_phase_a|run_source_index|collect_dependency_graph|collect_semantic_retrieval|collect_architecture_report",
         },
         {
-            "name": "Execution path focus",
-            "query": "run, collect, validate, output",
+            "name": "Where are the safety checks around edit application?",
+            "query": "compile check format safeguards tree edit",
             "scope": scope_path,
-            "why": "targets orchestration and data-flow helpers instead of topical nouns",
+            "why": "should surface the post-edit guardrail path and formatting checks",
+            "structural_pattern": "post_apply_safeguards|run_compile_check_on_file|run_formatter_on_file|run_lint_check_on_file",
         },
     ]
+
+
+def _semantic_profile_payload(
+    semantic_doc: dict[str, Any], scope_path: str
+) -> dict[str, Any]:
+    result_doc = semantic_doc.get("result", semantic_doc)
+    structured = result_doc.get("payload", {}).get("structuredContent", {})
+    groups = structured.get("groups", [])
+    semantic_rows = structured.get("semantic", {}).get("rows", [])
+    top_groups: list[dict[str, Any]] = []
+    for group in groups[:3]:
+        rows = group.get("rows", [])
+        top_groups.append(
+            {
+                "file": group.get("file", ""),
+                "top_symbol": rows[0][0] if rows and len(rows[0]) > 0 else "",
+                "top_label": rows[0][1] if rows and len(rows[0]) > 1 else "",
+                "rows_in_group": len(rows),
+            }
+        )
+    top_semantic_rows: list[dict[str, Any]] = []
+    for row in semantic_rows[:5]:
+        if len(row) < 4:
+            continue
+        top_semantic_rows.append(
+            {
+                "qn": row[0],
+                "label": row[1],
+                "file": row[2],
+                "score": row[3],
+            }
+        )
+    return {
+        "groups_count": len(groups),
+        "group_rows_total": sum(len(group.get("rows", [])) for group in groups),
+        "semantic_rows_count": len(semantic_rows),
+        "semantic_local_rows": sum(
+            1
+            for row in semantic_rows
+            if len(row) >= 3 and str(row[2]).startswith(scope_path)
+        ),
+        "semantic_non_local_rows": sum(
+            1
+            for row in semantic_rows
+            if len(row) >= 3 and not str(row[2]).startswith(scope_path)
+        ),
+        "top_groups": top_groups,
+        "top_semantic_rows": top_semantic_rows,
+    }
+
+
+def _structural_profile_payload(structured_text: str) -> dict[str, Any]:
+    rows: list[tuple[str, str, str]] = []
+    for line in structured_text.splitlines():
+        stripped = line.strip()
+        if (
+            not stripped
+            or stripped.startswith("rows:")
+            or stripped.startswith("total:")
+        ):
+            continue
+        if " CALLS " in stripped:
+            source, target = stripped.split(" CALLS ", 1)
+            rows.append((source, "CALLS", target))
+        elif " IMPORTS " in stripped:
+            source, target = stripped.split(" IMPORTS ", 1)
+            rows.append((source, "IMPORTS", target))
+        elif " INHERITS " in stripped:
+            source, target = stripped.split(" INHERITS ", 1)
+            rows.append((source, "INHERITS", target))
+    return {
+        "rows": rows,
+        "row_count": len(rows),
+        "coherent_rows": [
+            row for row in rows if ".eval." not in row[0] and ".eval." not in row[2]
+        ][:6],
+    }
+
+
+def _structural_search_payload(structural_doc: dict[str, Any]) -> dict[str, Any]:
+    result_doc = structural_doc.get("result", structural_doc)
+    structured = result_doc.get("payload", {}).get("structuredContent", {})
+    groups = structured.get("groups", [])
+    top_groups: list[dict[str, Any]] = []
+    for group in groups[:3]:
+        rows = group.get("rows", [])
+        top_groups.append(
+            {
+                "file": group.get("file", ""),
+                "top_symbol": rows[0][0] if rows and len(rows[0]) > 0 else "",
+                "top_label": rows[0][1] if rows and len(rows[0]) > 1 else "",
+                "rows_in_group": len(rows),
+            }
+        )
+    rows = [
+        (group.get("file", ""), row[0], row[1])
+        for group in groups
+        for row in group.get("rows", [])
+        if len(row) >= 2
+    ]
+    return {
+        "groups_count": len(groups),
+        "group_rows_total": sum(len(group.get("rows", [])) for group in groups),
+        "top_groups": top_groups,
+        "rows": rows[:10],
+    }
 
 
 def _scoped_architecture(
@@ -426,6 +535,7 @@ def build_candidate_report(
     scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
     coherent_edges, suspicious_edges = _example_edge_lines(scoped_dep_rows)
 
+    semantic_profiles = _semantic_query_profiles(scope_path)
     scoped_semantic = _scoped_semantic_search(
         project_root=project_root,
         project_name=project_name,
@@ -433,6 +543,39 @@ def build_candidate_report(
         cbm_binary=cbm_binary,
         semantic_terms=semantic["semantic_terms"],
     )
+    representative_searches: list[dict[str, Any]] = []
+    for profile in semantic_profiles:
+        profile_result = _scoped_semantic_search(
+            project_root=project_root,
+            project_name=project_name,
+            scope_path=profile["scope"],
+            cbm_binary=cbm_binary,
+            semantic_terms=[
+                token.strip() for token in profile["query"].split() if token.strip()
+            ],
+        )
+        structural_result = run_cbm_tool(
+            cbm_binary,
+            "search_graph",
+            {
+                "project": project_name,
+                "name_pattern": profile["structural_pattern"],
+                "label": "Function",
+                "limit": 20,
+                "format": "json",
+            },
+            cwd=project_root,
+        )
+        representative_searches.append(
+            {
+                "question": profile["name"],
+                "query": profile["query"],
+                "why": profile["why"],
+                "result": _semantic_profile_payload(profile_result, scope_path),
+                "structural_pattern": profile["structural_pattern"],
+                "structural_result": _structural_search_payload(structural_result),
+            }
+        )
 
     full_arch_text = _architecture_text(architecture)
     full_languages = _parse_section_counts(full_arch_text, "languages")
@@ -440,7 +583,6 @@ def build_candidate_report(
     local_groups = _top_local_groups(scoped_semantic, scope_path)
     local_semantic_stats = _semantic_group_summary(scoped_semantic, scope_path)
     semantic_noise = _semantic_noise_summary(semantic, scope_path)
-    semantic_profiles = _semantic_query_profiles(scope_path)
     input_rows = _candidate_input_rows(
         source_index=source_index,
         dependency_doc=load_json(input_dir / "dependency_graph.json"),
@@ -488,6 +630,47 @@ def build_candidate_report(
         )
         or "- No local grouped results found."
     )
+
+    representative_sections: list[str] = []
+    for index, search in enumerate(representative_searches, start=1):
+        result = search["result"]
+        structural = search["structural_result"]
+        top_group = result["top_groups"][0] if result["top_groups"] else None
+        top_semantic = (
+            result["top_semantic_rows"][0] if result["top_semantic_rows"] else None
+        )
+        structural_top = (
+            structural["top_groups"][0] if structural["top_groups"] else None
+        )
+        section_lines = [
+            f"### Example {index}: {search['question']}",
+            f"- Why this question: {search['why']}",
+            f"- Search sent: semantic_query=[{search['query']}], file_pattern={scope_path}/*, limit=30",
+            f"- Raw counts: groups={result['groups_count']}, group_rows={result['group_rows_total']}, semantic_rows={result['semantic_rows_count']}, local={result['semantic_local_rows']}, non_local={result['semantic_non_local_rows']}",
+        ]
+        if top_group:
+            section_lines.append(
+                f"- Top grouped hit: {top_group['file']} -> {top_group['top_symbol']} ({top_group['top_label']}, group_rows={top_group['rows_in_group']})"
+            )
+        if top_semantic:
+            section_lines.append(
+                f"- Top semantic hit: {top_semantic['qn']} [{top_semantic['label']}] in {top_semantic['file']} score={top_semantic['score']:.4f}"
+            )
+        section_lines.append(
+            f"- Verification search sent: name_pattern={search['structural_pattern']}, label=Function, limit=20"
+        )
+        section_lines.append(
+            f"- Verification counts: groups={structural['groups_count']}, rows={structural['group_rows_total']}"
+        )
+        if structural_top:
+            section_lines.append(
+                f"- Verification top hit: {structural_top['file']} -> {structural_top['top_symbol']} ({structural_top['top_label']}, group_rows={structural_top['rows_in_group']})"
+            )
+        section_lines.append(
+            "- Human-readable result: the semantic rank is still noisy, but the verification search confirms the local function(s) that implement the question."
+        )
+        representative_sections.append("\n".join(section_lines))
+    representative_report = "\n\n".join(representative_sections)
 
     hotspot_lines = (
         "\n".join(f"- {line}" for line in scoped_hotspots[:8]) or "- No hotspots found."
@@ -616,12 +799,7 @@ Observation:
 
 ## Semantic Retrieval Interpretation
 
-The stored artifact is evaluated as-is, but the local grouped examples below come from a scoped live re-query so the report can show what the candidate becomes capable of under tighter constraints.
-
-Current semantic query:
-- semantic_query: `{semantic["semantic_terms"]}`
-- file_pattern: `{semantic.get("file_pattern") or "n/a"}`
-- limit: `{semantic.get("limit")}`
+The stored artifact is evaluated as-is, but the local grouped examples below come from three live re-queries built from repo-specific questions.
 
 What the output looks like:
 - `groups`: files with local matches, each row showing `name`, `label`, `lines`, `in`, `out`
@@ -633,11 +811,11 @@ How semantic is it?
 - In this repo, that means the signal is partially semantic and partially structural.
 - The score is most useful as a prioritization hint after you already know the package scope.
 
-Three query profiles worth comparing:
+Representative searches and findings:
 
-{_markdown_profile_table(semantic_profiles)}
+{representative_report}
 
-Evaluation scorecard:
+Evaluation scorecard for the baseline scoped search:
 - local grouped files: {local_semantic_stats["local_groups"]}
 - local grouped rows: {local_semantic_stats["local_rows"]}
 - local ranking rows: {semantic_noise["local"]}
@@ -647,19 +825,18 @@ Evaluation scorecard:
 {local_group_lines}
 
 - Semantic rows split:
-  - local scoped rows: {semantic_noise["local"]}
-  - non-local rows: {semantic_noise["non_local"]}
+    - local scoped rows: {semantic_noise["local"]}
+    - non-local rows: {semantic_noise["non_local"]}
 
 {_mermaid_semantic_signal(semantic_noise)}
 
 Observation:
-- The semantic retrieval command works, but the current default query is still noisy because most top semantic rows come from the indexed candidate repos.
-- The grouped local results are more useful than the raw semantic ranking list for understanding this project.
+- The semantic retrieval command works, but the ranking still drifts into .eval candidates in this corpus.
+- The grouped local results are the useful part for understanding this project.
 
 What this means in practice:
 - Successful execution does not imply meaningful insight.
-- For this project, semantic retrieval currently has low signal because the indexed corpus is dominated by evaluation repositories.
-- This is still a valuable result: it tells us the candidate is best used as a package-local discovery helper, not as a global ranking engine.
+- For this project, semantic retrieval is best used as package-local discovery plus a raw ranking hint, not as a reliable answer engine.
 
 How to use it here:
 {_line_list(_semantic_usage_guidance(scope_path), "No guidance available.")}
