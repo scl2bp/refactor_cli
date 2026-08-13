@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import os
-import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -43,32 +40,21 @@ def run_source_index(
             "project_root": str(config_root),
             "file_count": len(staged_files),
         }
+        # Always index the real project root so CBM can find the .git dir and
+        # parse Python symbols. A staging-dir copy has no .git, so CBM would
+        # only produce Project/Branch metadata nodes with no code content.
+        staged_repo_path = config_root
 
-        staging_dir = Path(tempfile.mkdtemp(prefix="refactor-cli-index-"))
-        for path in files:
-            relative_path = path.relative_to(config_root)
-            destination = staging_dir / relative_path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                destination.symlink_to(path.resolve())
-            except OSError:
-                shutil.copy2(path, destination)
-        staged_repo_path = staging_dir
-
-    try:
-        index_result = run_cbm_tool(
-            cbm_binary,
-            "index_repository",
-            {
-                "repo_path": str(staged_repo_path.resolve()),
-                "mode": mode,
-                "name": resolved_name,
-            },
-            cwd=resolved_root,
-        )
-    finally:
-        if staged_repo_path != resolved_root and staged_repo_path.exists():
-            shutil.rmtree(staged_repo_path, ignore_errors=True)
+    index_result = run_cbm_tool(
+        cbm_binary,
+        "index_repository",
+        {
+            "repo_path": str(staged_repo_path.resolve()),
+            "mode": mode,
+            "name": resolved_name,
+        },
+        cwd=resolved_root,
+    )
 
     projects_result = run_cbm_tool(cbm_binary, "list_projects", {}, cwd=project_root)
 

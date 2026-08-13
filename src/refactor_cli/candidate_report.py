@@ -496,6 +496,34 @@ def _mermaid_scoped_edges(dep_rows: list[tuple[str, str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _mermaid_structural_hits(rows: list[tuple[str, str, str]]) -> str:
+    """Render found symbols grouped by source file as a flowchart.
+
+    rows: list of (file_path, symbol_name, label) from _structural_search_payload.
+    Each unique file becomes a node; each symbol in that file gets an edge from it.
+    """
+    lines = ["```mermaid", "flowchart LR"]
+    if not rows:
+        lines.append('  no_hits["No matching symbols found"]')
+        lines.append("```")
+        return "\n".join(lines)
+    seen_ids: dict[str, str] = {}
+
+    def node_id(raw: str) -> str:
+        safe = raw.replace(".", "_").replace("/", "_").replace("-", "_")
+        if safe not in seen_ids:
+            seen_ids[safe] = raw
+        return safe
+
+    for file_path, symbol_name, _label in rows[:12]:
+        module = Path(file_path).stem
+        fid = node_id(module)
+        sid = node_id(symbol_name)
+        lines.append(f'  {fid}["{module}"] -->|DEFINES| {sid}["{symbol_name}"]')
+    lines.append("```")
+    return "\n".join(lines)
+
+
 def _mermaid_semantic_signal(summary: dict[str, int]) -> str:
     lines = [
         "```mermaid",
@@ -697,6 +725,7 @@ def build_candidate_report(
                 "query": profile["query"],
                 "why": profile["why"],
                 "result": _semantic_profile_payload(profile_result, scope_path),
+                "raw_result": profile_result,
                 "structural_pattern": profile["structural_pattern"],
                 "structural_result": _structural_search_payload(structural_result),
             }
@@ -781,6 +810,8 @@ def build_candidate_report(
             section_lines.append(
                 f"- Top semantic hit: {top_semantic['qn']} [{top_semantic['label']}] in {top_semantic['file']} score={top_semantic['score']:.4f}"
             )
+        section_lines.append("- Dependency diagram from discovered items:")
+        section_lines.append(_mermaid_structural_hits(structural["rows"]))
         section_lines.append(
             f"- Verification search sent: name_pattern={search['structural_pattern']}, label=Function, limit=20"
         )
