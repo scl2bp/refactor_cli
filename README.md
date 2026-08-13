@@ -90,6 +90,7 @@ Available commands:
 - `format`
 - `apply-tree-patch`
 - `apply-tree-edit`
+- `candidate-phase-a`
 
 ## Quick Start
 
@@ -230,7 +231,29 @@ refactor-cli tree --print
 refactor-cli format
 refactor-cli apply-tree-edit
 refactor-cli apply-tree-patch
+refactor-cli candidate-phase-a --project-root /path/to/target/repo
 ```
+
+## Candidate-Based Phase A Modules
+
+The `candidate-phase-a` command runs thin adapters over installed candidate tools
+instead of custom reimplementation.
+
+Current module outputs:
+
+- `source_index.json`
+- `dependency_graph.json`
+- `semantic_retrieval.json`
+- `architecture_report.json`
+- `summary.json`
+
+Optional:
+
+- `coderag_validate.json` (when `--include-coderag-validate` is set)
+
+Default output directory:
+
+- `.refactor/analysis/candidates/`
 
 ## Troubleshooting
 

@@ -27,6 +27,9 @@ from refactor_cli.discovery import (
     resolve_project_root,
     statement_name,
 )
+from refactor_cli.architecture_report import collect_architecture_report
+from refactor_cli.candidate_tools import resolve_cbm_binary
+from refactor_cli.dependency_graph import collect_dependency_graph
 from refactor_cli.file_io import (
     archive_patch,
     load_json,
@@ -39,7 +42,9 @@ from refactor_cli.runtime_tools import (
     resolve_emend_runner,
     run_formatter_on_file,
 )
+from refactor_cli.semantic_retrieval import collect_semantic_retrieval
 from refactor_cli.safeguards import post_apply_safeguards
+from refactor_cli.source_index import run_coderag_validate_only, run_source_index
 from refactor_cli.tree_codec import (
     load_tree_yaml,
     write_tree_yaml,
@@ -51,6 +56,7 @@ DEFAULT_TREE = Path(".refactor/tree.yaml")
 DEFAULT_TREE_PATCH = Path(".refactor/patches/latest.tree.patch.yaml")
 DEFAULT_TREE_EDIT = Path(".refactor/patches/latest.tree.edit.yaml")
 DEFAULT_APPLIED_PATCHES_DIR = Path(".refactor/patches/applied")
+DEFAULT_CANDIDATE_OUTPUT_DIR = Path(".refactor/analysis/candidates")
 
 
 # --- compact tree serialization -----------------------------------------------
@@ -840,6 +846,102 @@ def cmd_apply_tree_edit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
+    project_root = Path(args.project_root).resolve()
+    if not project_root.exists():
+        raise FileNotFoundError(f"Project root not found: {project_root}")
+
+    cbm_binary = resolve_cbm_binary(args.cbm_binary)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    source_index = run_source_index(
+        project_root=project_root,
+        cbm_binary=cbm_binary,
+        project_name=args.project_name,
+        mode=args.index_mode,
+    )
+    write_json(output_dir / "source_index.json", source_index)
+    if not source_index.get("ok"):
+        print("CANDIDATE PHASE A FAILED at source_index")
+        print(f"  details: {output_dir / 'source_index.json'}")
+        return 1
+
+    project_name = source_index["project_name"]
+
+    dependency = collect_dependency_graph(
+        cbm_binary=cbm_binary,
+        project_root=project_root,
+        project_name=project_name,
+        max_rows=args.max_rows,
+    )
+    write_json(output_dir / "dependency_graph.json", dependency)
+
+    terms = [term.strip() for term in args.semantic_terms.split(",") if term.strip()]
+    semantic = collect_semantic_retrieval(
+        cbm_binary=cbm_binary,
+        project_root=project_root,
+        project_name=project_name,
+        semantic_terms=terms,
+        limit=args.semantic_limit,
+    )
+    write_json(output_dir / "semantic_retrieval.json", semantic)
+
+    architecture = collect_architecture_report(
+        cbm_binary=cbm_binary,
+        project_root=project_root,
+        project_name=project_name,
+        aspects=["overview"],
+    )
+    write_json(output_dir / "architecture_report.json", architecture)
+
+    coderag_result = None
+    if args.include_coderag_validate:
+        coderag_path = Path(args.coderag_path)
+        if coderag_path.exists():
+            coderag_result = run_coderag_validate_only(
+                coderag_root=coderag_path,
+                project_root=project_root,
+            )
+            write_json(output_dir / "coderag_validate.json", coderag_result)
+        else:
+            coderag_result = {
+                "provider": "CodeRAG",
+                "ok": False,
+                "error": f"CodeRAG path not found: {coderag_path}",
+            }
+            write_json(output_dir / "coderag_validate.json", coderag_result)
+
+    summary = {
+        "project_root": str(project_root),
+        "project_name": project_name,
+        "cbm_binary": str(cbm_binary),
+        "output_dir": str(output_dir),
+        "modules": {
+            "source_index": source_index.get("ok", False),
+            "dependency_graph": dependency.get("ok", False),
+            "semantic_retrieval": semantic.get("ok", False),
+            "architecture_report": architecture.get("ok", False),
+            "coderag_validate": None
+            if coderag_result is None
+            else coderag_result.get("ok", False),
+        },
+    }
+    write_json(output_dir / "summary.json", summary)
+
+    print("CANDIDATE PHASE A COMPLETE")
+    print(f"  project: {project_name}")
+    print(f"  output: {output_dir}")
+    for key, ok in summary["modules"].items():
+        if ok is None:
+            print(f"  - {key}: SKIP")
+            continue
+        marker = "OK" if ok else "FAIL"
+        print(f"  - {key}: {marker}")
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Project-agnostic structural refactoring tool"
@@ -912,6 +1014,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Backend used for symbol moves detected from the tree edit",
     )
     apply_tree_edit_parser.set_defaults(func=cmd_apply_tree_edit)
+
+    phase_a_parser = subparsers.add_parser(
+        "candidate-phase-a",
+        help="Run adapter-based candidate analysis modules and write normalized artifacts",
+    )
+    phase_a_parser.add_argument("--project-root", default=".")
+    phase_a_parser.add_argument("--project-name", default=None)
+    phase_a_parser.add_argument("--cbm-binary", default=None)
+    phase_a_parser.add_argument("--index-mode", default="moderate")
+    phase_a_parser.add_argument("--max-rows", type=int, default=5000)
+    phase_a_parser.add_argument(
+        "--semantic-terms",
+        default="dependency,refactor,module,call graph",
+    )
+    phase_a_parser.add_argument("--semantic-limit", type=int, default=100)
+    phase_a_parser.add_argument(
+        "--include-coderag-validate",
+        action="store_true",
+    )
+    phase_a_parser.add_argument(
+        "--coderag-path",
+        default=".eval/candidates/coderag",
+    )
+    phase_a_parser.add_argument(
+        "--output-dir",
+        default=str(DEFAULT_CANDIDATE_OUTPUT_DIR),
+    )
+    phase_a_parser.set_defaults(func=cmd_candidate_phase_a)
 
     return parser
 
