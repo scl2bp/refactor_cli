@@ -861,6 +861,7 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         project_root=project_root,
         cbm_binary=cbm_binary,
         project_name=args.project_name,
+        config_path=Path(args.config),
         mode=args.index_mode,
     )
     write_json(output_dir / "source_index.json", source_index)
@@ -1058,6 +1059,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run adapter-based candidate analysis modules and write normalized artifacts",
     )
     phase_a_parser.add_argument("--project-root", default=".")
+    phase_a_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     phase_a_parser.add_argument("--project-name", default=None)
     phase_a_parser.add_argument("--cbm-binary", default=None)
     phase_a_parser.add_argument("--index-mode", default="moderate")

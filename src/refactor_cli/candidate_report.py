@@ -421,9 +421,9 @@ def _candidate_input_rows(
         {
             "artifact": "source_index.json",
             "candidate": "codebase-memory-mcp",
-            "input": f"Repository root /workspace/refactor_cli, mode=moderate, excludes={', '.join(excluded)}",
+            "input": f"Config-scoped staging repo from .refactor/config.json, files={source_index.get('staged_files', [])[:5]}...",
             "output": "Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration",
-            "interpretation": "Tells us whether downstream graph outputs are trustworthy enough to inspect",
+            "interpretation": "Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set",
         },
         {
             "artifact": "dependency_graph.json",

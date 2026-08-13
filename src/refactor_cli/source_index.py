@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from refactor_cli.candidate_tools import run_cbm_tool
+from refactor_cli.discovery import (
+    discover_python_files,
+    load_config,
+    resolve_project_root,
+)
 
 
 def _project_name_from_root(project_root: Path) -> str:
@@ -17,19 +24,51 @@ def run_source_index(
     project_root: Path,
     cbm_binary: Path,
     project_name: str | None,
+    config_path: Path | None = None,
     mode: str = "moderate",
 ) -> dict[str, Any]:
-    resolved_name = project_name or _project_name_from_root(project_root)
-    index_result = run_cbm_tool(
-        cbm_binary,
-        "index_repository",
-        {
-            "repo_path": str(project_root.resolve()),
-            "mode": mode,
-            "name": resolved_name,
-        },
-        cwd=project_root,
-    )
+    resolved_root = project_root.resolve()
+    resolved_name = project_name or _project_name_from_root(resolved_root)
+    staged_repo_path = resolved_root
+    staged_files: list[str] = []
+    config_summary: dict[str, Any] | None = None
+
+    if config_path is not None and config_path.exists():
+        config = load_config(config_path)
+        config_root = resolve_project_root(config_path, config)
+        files = discover_python_files(config_root, config)
+        staged_files = [path.relative_to(config_root).as_posix() for path in files]
+        config_summary = {
+            "config_path": str(config_path.resolve()),
+            "project_root": str(config_root),
+            "file_count": len(staged_files),
+        }
+
+        staging_dir = Path(tempfile.mkdtemp(prefix="refactor-cli-index-"))
+        for path in files:
+            relative_path = path.relative_to(config_root)
+            destination = staging_dir / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                destination.symlink_to(path.resolve())
+            except OSError:
+                shutil.copy2(path, destination)
+        staged_repo_path = staging_dir
+
+    try:
+        index_result = run_cbm_tool(
+            cbm_binary,
+            "index_repository",
+            {
+                "repo_path": str(staged_repo_path.resolve()),
+                "mode": mode,
+                "name": resolved_name,
+            },
+            cwd=resolved_root,
+        )
+    finally:
+        if staged_repo_path != resolved_root and staged_repo_path.exists():
+            shutil.rmtree(staged_repo_path, ignore_errors=True)
 
     projects_result = run_cbm_tool(cbm_binary, "list_projects", {}, cwd=project_root)
 
@@ -38,6 +77,8 @@ def run_source_index(
         "project_root": str(project_root.resolve()),
         "project_name": resolved_name,
         "mode": mode,
+        "config_summary": config_summary,
+        "staged_files": staged_files,
         "index": index_result,
         "projects": projects_result,
         "ok": index_result["ok"] and projects_result["ok"],
