@@ -400,3 +400,124 @@ Implement a small pilot on one cohesive area (for example parser functions in sr
 - generate both summary styles
 - embed and cluster
 - produce a short findings report with candidate class/module boundaries
+
+## Current Technical Status and Decisions
+
+### Current semantic search technology
+
+- Semantic retrieval is currently executed through codebase-memory-mcp search_graph using semantic_query terms.
+- Returned payload contains two useful channels:
+  - groups: structural grouped local hits by file
+  - semantic.rows: ranked rows with scores that can drift across non-target corpus files
+- In this repository, grouped local hits are currently a more stable signal than top semantic rows when eval data is indexed.
+
+### Reporting and dependency visualization updates
+
+- Scoped dependency view now stays populated even when direct graph query is empty:
+  - primary: scoped CALLS/IMPORTS/INHERITS graph rows
+  - fallback A: local AST-derived import rows
+  - fallback B: search-hit derived rows
+- Per-example dependency diagrams in Semantic Retrieval Interpretation are now built from the structural verification search per example (module DEFINES symbol), not from generic top semantic groups.
+- This prevents repeated identical diagrams and makes each example question produce a distinct dependency view.
+
+### Indexing reliability correction
+
+- Source indexing now points to the real project root so CBM can see git metadata and parse symbols correctly.
+- Earlier staging into a temporary non-git directory caused severely degraded graphs (Project and Branch only).
+- Current validated index is full scale again (tens of thousands of nodes/edges), enabling meaningful scoped dependencies and search visualization.
+
+## Development Plan
+
+### Phase 0: Retrieval quality hardening (immediate)
+
+- Add strict scope gates for all semantic outputs used downstream:
+  - include only rows within configured scope path
+  - exclude any qn/file matching eval or external noise policies
+- Add retrieval quality metrics to artifacts:
+  - local_row_ratio
+  - local_group_count
+  - unique_local_symbol_count
+  - repeated_run_overlap
+- Acceptance criteria:
+  - local_row_ratio above agreed threshold
+  - stable top local symbols across repeated runs
+
+### Phase 1: Deterministic extraction baseline
+
+- Produce a stable symbol and module catalog from Emend outputs.
+- Export observed dependency graph and derived structural features.
+- Acceptance criteria:
+  - symbol coverage check passes
+  - dependency graph has expected module/function density
+
+### Phase 2: Summary generation and schema validation
+
+- Generate detailed summary and verb-noun summary per symbol/module.
+- Enforce strict JSON schema and reject invalid records.
+- Acceptance criteria:
+  - schema pass rate at target level
+  - deterministic reruns produce equivalent records for unchanged code
+
+### Phase 3: Embeddings and storage
+
+- Embed both summary forms plus selected structural metadata.
+- Persist vectors and metadata with reproducible identifiers.
+- Acceptance criteria:
+  - no null vectors
+  - stable embedding dimension and index integrity
+
+### Phase 4: Hybrid clustering
+
+- Run baseline semantic clustering and graph-aware clustering.
+- Compare quality using silhouette, modularity, and stability metrics.
+- Acceptance criteria:
+  - repeatable cluster assignments on unchanged input
+  - improved architecture coherence versus semantic-only baseline
+
+### Phase 5: Findings and refactor loop
+
+- Emit architecture findings and drift reports.
+- Convert selected findings into deterministic refactor plans for review.
+- Acceptance criteria:
+  - at least one validated actionable refactor candidate per pilot slice
+
+## Progress Report
+
+### Completed
+
+- Implemented robust scoped dependency rendering with graph and local fallbacks.
+- Implemented per-example dependency diagrams based on question-specific structural verification hits.
+- Fixed indexing path issue so semantic/dependency analyses run on a valid full graph.
+- Regenerated candidate report with distinct example diagrams and populated scoped views.
+
+### In progress
+
+- Hardening semantic retrieval quality gates to reduce non-local ranking drift.
+- Formalizing metrics for retrieval reliability and repeated-run consistency.
+
+### Not started
+
+- Full Emend symbol catalog export as a first-class pipeline artifact.
+- Summary generation schemas and validator package.
+- Embedding persistence and hybrid clustering execution harness.
+- Automated drift scoring against expected dependency rules.
+
+## Open Points and Proposed Solutions
+
+| Open point | Why it matters | Proposed solution options | Recommended default |
+|---|---|---|---|
+| Semantic ranking drifts to non-local corpus | Reduces trust in top hits and cluster seed quality | 1) hard filter by scope path and qn prefix, 2) two-stage retrieval (local groups first, semantic rerank second), 3) index partitioning by project slice | Option 2 plus strict filter from option 1 |
+| Dependency signal source for clustering | Different edge sources have different noise levels | 1) observed graph edges only, 2) observed plus expected-rule weighted edges, 3) expected-only for policy checks | Option 2 |
+| Hybrid score weight selection alpha/beta/gamma | Directly controls cluster shape | 1) fixed manual weights, 2) small grid search with stability objective, 3) adaptive weights by module type | Option 2 initially |
+| Function-level vs module-level clustering first | Affects interpretability and rollout speed | 1) function-first then aggregate, 2) module-first then drill down, 3) dual-track | Option 1 |
+| Cluster algorithm choice | Impacts robustness to uneven density | 1) HDBSCAN baseline, 2) Agglomerative baseline, 3) Leiden/Louvain graph community baseline | Option 1 plus 3 as comparison |
+| Expected dependency rule source | Needed for drift and policy checks | 1) path-based inferred rules, 2) explicit rule file in repo, 3) mixed inferred then curated | Option 3 |
+| Quality gate thresholds | Needed for go/no-go automation | 1) fixed thresholds now, 2) derive from pilot distribution, 3) human-in-loop only | Option 2 |
+
+## Discussion Prompts for Next Session
+
+- Which pilot slice should be the first canonical benchmark set in this repository?
+- Which failure is currently more costly: false-positive semantic hits or missed local symbols?
+- Should we optimize first for explainability of clusters or for retrieval coverage?
+- What minimum metric set should block a run from producing architecture findings?
+- Do we want expected dependency rules owned by architecture docs, code owners, or both?
