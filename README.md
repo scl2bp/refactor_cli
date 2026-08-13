@@ -91,6 +91,7 @@ Available commands:
 - `apply-tree-patch`
 - `apply-tree-edit`
 - `candidate-phase-a`
+- `candidate-report`
 
 ## Quick Start
 
@@ -232,6 +233,7 @@ refactor-cli format
 refactor-cli apply-tree-edit
 refactor-cli apply-tree-patch
 refactor-cli candidate-phase-a --project-root /path/to/target/repo
+refactor-cli candidate-report
 ```
 
 ## Candidate-Based Phase A Modules
@@ -254,6 +256,29 @@ Optional:
 Default output directory:
 
 - `.refactor/analysis/candidates/`
+
+Scope and noise controls (recommended defaults):
+
+- `--scope-path src/refactor_cli`
+- `--scope-qn-prefix refactor_cli.src.refactor_cli`
+- `--exclude-qn-substring .eval.`
+
+Operational policy for this repository:
+
+- Persistent daemon mode is intentionally out-of-scope.
+
+### Readable Report Output
+
+To render the raw candidate JSON artifacts as a readable Markdown report with
+Mermaid diagrams:
+
+```bash
+refactor-cli candidate-report
+```
+
+Default output:
+
+- `.refactor/analysis/candidates/report.md`
 
 ## Troubleshooting
 

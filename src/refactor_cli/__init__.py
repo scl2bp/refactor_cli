@@ -28,6 +28,7 @@ from refactor_cli.discovery import (
     statement_name,
 )
 from refactor_cli.architecture_report import collect_architecture_report
+from refactor_cli.candidate_report import build_candidate_report
 from refactor_cli.candidate_tools import resolve_cbm_binary
 from refactor_cli.dependency_graph import collect_dependency_graph
 from refactor_cli.file_io import (
@@ -57,6 +58,7 @@ DEFAULT_TREE_PATCH = Path(".refactor/patches/latest.tree.patch.yaml")
 DEFAULT_TREE_EDIT = Path(".refactor/patches/latest.tree.edit.yaml")
 DEFAULT_APPLIED_PATCHES_DIR = Path(".refactor/patches/applied")
 DEFAULT_CANDIDATE_OUTPUT_DIR = Path(".refactor/analysis/candidates")
+DEFAULT_CANDIDATE_REPORT = DEFAULT_CANDIDATE_OUTPUT_DIR / "report.md"
 
 
 # --- compact tree serialization -----------------------------------------------
@@ -868,12 +870,19 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         return 1
 
     project_name = source_index["project_name"]
+    scope_path = args.scope_path.strip() if args.scope_path else ""
+    scope_qn_prefix = args.scope_qn_prefix.strip() if args.scope_qn_prefix else ""
+    exclude_qn_substrings = [
+        token.strip() for token in args.exclude_qn_substring if token.strip()
+    ]
 
     dependency = collect_dependency_graph(
         cbm_binary=cbm_binary,
         project_root=project_root,
         project_name=project_name,
         max_rows=args.max_rows,
+        scope_qn_prefix=scope_qn_prefix or None,
+        exclude_qn_substrings=exclude_qn_substrings,
     )
     write_json(output_dir / "dependency_graph.json", dependency)
 
@@ -884,6 +893,7 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         project_name=project_name,
         semantic_terms=terms,
         limit=args.semantic_limit,
+        file_pattern=f"{scope_path}/*" if scope_path else None,
     )
     write_json(output_dir / "semantic_retrieval.json", semantic)
 
@@ -892,6 +902,7 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         project_root=project_root,
         project_name=project_name,
         aspects=["overview"],
+        scope_path=scope_path or None,
     )
     write_json(output_dir / "architecture_report.json", architecture)
 
@@ -917,6 +928,12 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         "project_name": project_name,
         "cbm_binary": str(cbm_binary),
         "output_dir": str(output_dir),
+        "scope": {
+            "scope_path": scope_path,
+            "scope_qn_prefix": scope_qn_prefix,
+            "exclude_qn_substrings": exclude_qn_substrings,
+            "daemon_mode": "out_of_scope",
+        },
         "modules": {
             "source_index": source_index.get("ok", False),
             "dependency_graph": dependency.get("ok", False),
@@ -939,6 +956,27 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         marker = "OK" if ok else "FAIL"
         print(f"  - {key}: {marker}")
 
+    return 0
+
+
+def cmd_candidate_report(args: argparse.Namespace) -> int:
+    input_dir = Path(args.input_dir)
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+
+    output_path = Path(args.output)
+    report = build_candidate_report(
+        input_dir=input_dir,
+        output_path=output_path,
+        scope_path=args.scope_path,
+        project_root=Path(args.project_root).resolve() if args.project_root else None,
+        cbm_binary_path=args.cbm_binary,
+    )
+
+    print("CANDIDATE REPORT WRITTEN")
+    print(f"  input: {input_dir}")
+    print(f"  output: {output_path}")
+    print(f"  lines: {len(report.splitlines())}")
     return 0
 
 
@@ -1030,6 +1068,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     phase_a_parser.add_argument("--semantic-limit", type=int, default=100)
     phase_a_parser.add_argument(
+        "--scope-path",
+        default="src/refactor_cli",
+        help="File path scope used for semantic and architecture queries",
+    )
+    phase_a_parser.add_argument(
+        "--scope-qn-prefix",
+        default="refactor_cli.src.refactor_cli",
+        help="Qualified-name prefix used to scope dependency edge extraction",
+    )
+    phase_a_parser.add_argument(
+        "--exclude-qn-substring",
+        action="append",
+        default=[".eval."],
+        help="Substring filter applied to dependency source/target qualified names (repeatable)",
+    )
+    phase_a_parser.add_argument(
         "--include-coderag-validate",
         action="store_true",
     )
@@ -1042,6 +1096,32 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_CANDIDATE_OUTPUT_DIR),
     )
     phase_a_parser.set_defaults(func=cmd_candidate_phase_a)
+
+    candidate_report_parser = subparsers.add_parser(
+        "candidate-report",
+        help="Render candidate analysis artifacts as Markdown plus Mermaid visualizations",
+    )
+    candidate_report_parser.add_argument(
+        "--input-dir",
+        default=str(DEFAULT_CANDIDATE_OUTPUT_DIR),
+    )
+    candidate_report_parser.add_argument(
+        "--output",
+        default=str(DEFAULT_CANDIDATE_REPORT),
+    )
+    candidate_report_parser.add_argument(
+        "--scope-path",
+        default="src/refactor_cli",
+    )
+    candidate_report_parser.add_argument(
+        "--project-root",
+        default=None,
+    )
+    candidate_report_parser.add_argument(
+        "--cbm-binary",
+        default=None,
+    )
+    candidate_report_parser.set_defaults(func=cmd_candidate_report)
 
     return parser
 
