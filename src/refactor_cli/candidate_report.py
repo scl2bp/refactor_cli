@@ -101,6 +101,23 @@ def _top_local_groups(
     return rows[:10]
 
 
+def _semantic_group_summary(
+    semantic_doc: dict[str, Any], scope_path: str
+) -> dict[str, int]:
+    result_doc = semantic_doc.get("result", semantic_doc)
+    structured = result_doc.get("payload", {}).get("structuredContent", {})
+    groups = structured.get("groups", [])
+    local_groups = 0
+    local_rows = 0
+    for group in groups:
+        file_path = group.get("file", "")
+        if not str(file_path).startswith(scope_path):
+            continue
+        local_groups += 1
+        local_rows += len(group.get("rows", []))
+    return {"local_groups": local_groups, "local_rows": local_rows}
+
+
 def _semantic_noise_summary(
     semantic_doc: dict[str, Any], scope_path: str
 ) -> dict[str, int]:
@@ -119,6 +136,38 @@ def _semantic_noise_summary(
         else:
             non_local += 1
     return {"local": local, "non_local": non_local}
+
+
+def _semantic_usage_guidance(scope_path: str) -> list[str]:
+    return [
+        f"Search with file_pattern={scope_path}/* when you need package-local discovery.",
+        "Treat semantic rows as corpus-wide ranking hints, not as a scoped file filter.",
+        "Use grouped hits to find local files, then inspect the file-level summary and the ranking scores together.",
+        "If the local ratio stays at 0, the query terms are too broad for the package or the corpus is too noisy.",
+    ]
+
+
+def _semantic_query_profiles(scope_path: str) -> list[dict[str, str]]:
+    return [
+        {
+            "name": "Current default",
+            "query": "dependency, refactor, module, call graph",
+            "scope": scope_path,
+            "why": "broad discovery query used by candidate-phase-a",
+        },
+        {
+            "name": "Package-local structure",
+            "query": "candidate, report, scope, architecture",
+            "scope": scope_path,
+            "why": "looks for file names and code paths that describe the package's own analysis surfaces",
+        },
+        {
+            "name": "Execution path focus",
+            "query": "run, collect, validate, output",
+            "scope": scope_path,
+            "why": "targets orchestration and data-flow helpers instead of topical nouns",
+        },
+    ]
 
 
 def _scoped_architecture(
@@ -303,6 +352,18 @@ def _markdown_input_table(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def _markdown_profile_table(rows: list[dict[str, str]]) -> str:
+    lines = [
+        "| Profile | Query | Scope | Why It Helps |",
+        "|---|---|---|---|",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['name']} | {row['query']} | {row['scope']} | {row['why']} |"
+        )
+    return "\n".join(lines)
+
+
 def _example_edge_lines(
     dep_rows: list[tuple[str, str, str]],
 ) -> tuple[list[str], list[str]]:
@@ -377,7 +438,9 @@ def build_candidate_report(
     full_languages = _parse_section_counts(full_arch_text, "languages")
     sizes = _artifact_size_rows(input_dir)
     local_groups = _top_local_groups(scoped_semantic, scope_path)
+    local_semantic_stats = _semantic_group_summary(scoped_semantic, scope_path)
     semantic_noise = _semantic_noise_summary(semantic, scope_path)
+    semantic_profiles = _semantic_query_profiles(scope_path)
     input_rows = _candidate_input_rows(
         source_index=source_index,
         dependency_doc=load_json(input_dir / "dependency_graph.json"),
@@ -398,7 +461,7 @@ def build_candidate_report(
         ),
         (
             "Scoped semantic retrieval signal",
-            "OK" if semantic_noise.get("local", 0) > 0 else "LOW_SIGNAL",
+            ("OK" if local_semantic_stats.get("local_rows", 0) > 0 else "LOW_SIGNAL"),
         ),
         (
             "CodeRAG validation",
@@ -555,6 +618,31 @@ Observation:
 
 The stored artifact is evaluated as-is, but the local grouped examples below come from a scoped live re-query so the report can show what the candidate becomes capable of under tighter constraints.
 
+Current semantic query:
+- semantic_query: `{semantic["semantic_terms"]}`
+- file_pattern: `{semantic.get("file_pattern") or "n/a"}`
+- limit: `{semantic.get("limit")}`
+
+What the output looks like:
+- `groups`: files with local matches, each row showing `name`, `label`, `lines`, `in`, `out`
+- `semantic.rows`: ranked hits with `qn`, `label`, `file`, and `score`
+- In other words, this is ranked graph search output, not a generated answer.
+
+How semantic is it?
+- The search uses semantic terms, but the answer is still grounded in the indexed graph.
+- In this repo, that means the signal is partially semantic and partially structural.
+- The score is most useful as a prioritization hint after you already know the package scope.
+
+Three query profiles worth comparing:
+
+{_markdown_profile_table(semantic_profiles)}
+
+Evaluation scorecard:
+- local grouped files: {local_semantic_stats["local_groups"]}
+- local grouped rows: {local_semantic_stats["local_rows"]}
+- local ranking rows: {semantic_noise["local"]}
+- non-local ranking rows: {semantic_noise["non_local"]}
+
 - Local grouped hits in `{scope_path}`:
 {local_group_lines}
 
@@ -571,7 +659,10 @@ Observation:
 What this means in practice:
 - Successful execution does not imply meaningful insight.
 - For this project, semantic retrieval currently has low signal because the indexed corpus is dominated by evaluation repositories.
-- This is still a valuable result: it tells us the candidate needs stronger scope control or separate indexes to be useful for repository understanding.
+- This is still a valuable result: it tells us the candidate is best used as a package-local discovery helper, not as a global ranking engine.
+
+How to use it here:
+{_line_list(_semantic_usage_guidance(scope_path), "No guidance available.")}
 
 ## Practical Conclusions
 
