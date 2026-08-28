@@ -92,9 +92,17 @@ Available commands:
 - `apply-tree-edit`
 - `candidate-phase-a`
 - `candidate-report`
+- `candidate-search`
 
 `candidate-report` now defaults to an architecture-first summary. Demo-style semantic
 example sections are omitted unless `--include-demo-artifacts` is passed.
+
+`candidate-search` is a thin wrapper around `codebase-memory-mcp cli search_graph`
+that auto-fills project defaults from `.refactor/config.json` (`candidate_analysis`
+section): project name, CBM binary, scope path, semantic terms, and limit.
+
+If you run it from inside a project directory, the command will look for `.refactor/config.json`
+in the current folder or any parent folder automatically.
 
 ## Quick Start
 
@@ -226,6 +234,47 @@ Guidelines for agents:
 - let the tool derive file edits from tree intent rather than rewriting code manually
 - rely on the built-in safeguards, but still run a project-specific smoke test after major refactors
 - regenerate the tree before creating a new patch if the code has changed outside the tool
+
+## Candidate Search Wrapper
+
+Use this command when you want CBM search results without manually rebuilding the full
+`search_graph` command each time.
+
+Run with a configured semantic profile:
+
+```bash
+refactor-cli candidate-search --profile "Calculation and processing" --label Class
+```
+
+Run with explicit semantic terms (overrides profile/config defaults):
+
+```bash
+refactor-cli candidate-search \
+  --semantic-query '["simulation","run_model","throughput","servicegrad","kanban"]' \
+  --label Class
+```
+
+Override only the scope while keeping all other defaults:
+
+```bash
+refactor-cli candidate-search --scope-path crin4_sim --label Function
+```
+
+Pass additional raw CBM flags through to `search_graph`:
+
+```bash
+refactor-cli candidate-search \
+  --profile "Calculation and processing" \
+  --cbm-options "--min-degree 2 --include-connected --relationship CALLS"
+```
+
+Notes:
+
+- The wrapper uses direct subprocess argument passing, so wildcard scope patterns do not
+  get expanded by the shell.
+- `--semantic-query` accepts either a JSON array string or a comma-separated list.
+- `--cbm-options` expects a simple `--flag value --flag2 value2` tail; flags without
+  values are treated as booleans.
 
 ## `.refactor/` Workspace
 

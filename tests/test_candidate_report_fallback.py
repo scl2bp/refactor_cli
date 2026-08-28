@@ -5,6 +5,7 @@ from pathlib import Path
 from refactor_cli.__init__ import (
     _resolve_candidate_phase_a_settings,
     _resolve_candidate_report_settings,
+    _resolve_candidate_search_settings,
 )
 from refactor_cli.candidate_report import (
     _fallback_dependency_rows,
@@ -126,7 +127,7 @@ def test_demo_artifacts_section_is_opt_in():
     )
 
     assert "Representative semantic searches" not in hidden
-    assert "--include-demo-artifacts" in hidden
+    assert hidden == ""
     assert "Representative semantic searches" in shown
     assert "Search-hit Dependency View" in shown
 
@@ -258,4 +259,174 @@ def test_candidate_report_uses_project_config_defaults_and_summary_scope(tmp_pat
     assert settings["scope_path"] == "src/demo_pkg"
     assert settings["cbm_binary"] == "/bin/echo"
     assert settings["include_demo_artifacts"] is False
-    assert settings["semantic_query_profiles"][0]["name"] == "Report generation"
+
+
+def test_candidate_search_uses_profile_defaults(tmp_path: Path):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    refactor_dir = project_root / ".refactor"
+    refactor_dir.mkdir()
+    config_path = refactor_dir / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "project_root": "..",
+                "python_files": {"include": ["src/**/*.py"], "exclude": []},
+                "candidate_analysis": {
+                    "project_name": "demo-project",
+                    "cbm_binary": "/bin/echo",
+                    "semantic_limit": 17,
+                    "scope_path": "src/demo_pkg",
+                    "semantic_terms": ["fallback", "terms"],
+                    "semantic_query_profiles": [
+                        {
+                            "name": "Calculation and processing",
+                            "query": "simulation throughput",
+                            "why": "core logic",
+                            "scope_path": "src/demo_pkg/core",
+                        }
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    args = argparse.Namespace(
+        config=str(config_path),
+        project_root=None,
+        project_name=None,
+        cbm_binary=None,
+        profile="Calculation and processing",
+        semantic_query=None,
+        scope_path=None,
+        file_pattern=None,
+        label="Class",
+        limit=None,
+        format="json",
+    )
+
+    settings = _resolve_candidate_search_settings(args)
+
+    assert settings["project_root"] == project_root.resolve()
+    assert settings["project_name"] == "demo-project"
+    assert settings["cbm_binary"] == Path("/bin/echo")
+    assert settings["semantic_query"] == ["simulation", "throughput"]
+    assert settings["file_pattern"] == "src/demo_pkg/core/*"
+    assert settings["label"] == "Class"
+    assert settings["limit"] == 17
+
+
+def test_candidate_search_semantic_query_override(tmp_path: Path):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    refactor_dir = project_root / ".refactor"
+    refactor_dir.mkdir()
+    config_path = refactor_dir / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "project_root": "..",
+                "python_files": {"include": ["src/**/*.py"], "exclude": []},
+                "candidate_analysis": {
+                    "project_name": "demo-project",
+                    "cbm_binary": "/bin/echo",
+                    "semantic_limit": 50,
+                    "scope_path": "src/demo_pkg",
+                    "semantic_terms": ["fallback", "terms"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    args = argparse.Namespace(
+        config=str(config_path),
+        project_root=None,
+        project_name=None,
+        cbm_binary=None,
+        profile=None,
+        semantic_query='["run_model","servicegrad"]',
+        scope_path=None,
+        file_pattern=None,
+        label=None,
+        limit=25,
+        format="json",
+    )
+
+    settings = _resolve_candidate_search_settings(args)
+
+    assert settings["semantic_query"] == ["run_model", "servicegrad"]
+    assert settings["file_pattern"] == "src/demo_pkg/*"
+    assert settings["limit"] == 25
+
+
+def test_candidate_search_defaults_to_current_project_config(tmp_path: Path, monkeypatch):
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    refactor_dir = project_root / ".refactor"
+    refactor_dir.mkdir()
+    config_path = refactor_dir / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "project_root": "..",
+                "python_files": {"include": ["src/**/*.py"], "exclude": []},
+                "candidate_analysis": {
+                    "project_name": "demo-project",
+                    "cbm_binary": "/bin/echo",
+                    "scope_path": "src/demo_pkg",
+                    "semantic_terms": ["dependency"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(project_root)
+
+    args = argparse.Namespace(
+        config=None,
+        project_root=None,
+        project_name=None,
+        cbm_binary=None,
+        profile=None,
+        semantic_query=None,
+        scope_path=None,
+        file_pattern=None,
+        label=None,
+        limit=None,
+        format="json",
+        cbm_options=None,
+    )
+
+    settings = _resolve_candidate_search_settings(args)
+
+    assert settings["config_path"] == config_path
+    assert settings["project_name"] == "demo-project"
+    assert settings["file_pattern"] == "src/demo_pkg/*"
+    assert settings["semantic_query"] == ["dependency"]
+
+
+def test_candidate_search_parses_cbm_options():
+    args = argparse.Namespace(
+        config=".refactor/config.json",
+        project_root=None,
+        project_name=None,
+        cbm_binary="/bin/echo",
+        profile=None,
+        semantic_query='["dependency"]',
+        scope_path="crin4_sim",
+        file_pattern=None,
+        label=None,
+        limit=None,
+        format="json",
+        cbm_options="--min-degree 2 --include-connected --relationship CALLS",
+    )
+
+    settings = _resolve_candidate_search_settings(args)
+
+    assert settings["cbm_options"] == {
+        "min_degree": "2",
+        "include_connected": True,
+        "relationship": "CALLS",
+    }

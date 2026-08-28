@@ -122,18 +122,22 @@ def _semantic_group_summary(
 
 
 def _semantic_noise_summary(
-    semantic_doc: dict[str, Any], scope_path: str
+    semantic_doc: dict[str, Any], scope_path: str, exclude_substrings: list[str] | None = None
 ) -> dict[str, int]:
     result_doc = semantic_doc.get("result", semantic_doc)
     structured = result_doc.get("payload", {}).get("structuredContent", {})
     semantic = structured.get("semantic", {})
     rows = semantic.get("rows", [])
+    excluded_tokens = [token for token in (exclude_substrings or []) if token]
     local = 0
     non_local = 0
     for row in rows:
         if len(row) < 3:
             continue
+        qn = str(row[0])
         file_path = row[2]
+        if any(token in qn or token in str(file_path) for token in excluded_tokens):
+            continue
         if str(file_path).startswith(scope_path):
             local += 1
         else:
@@ -147,6 +151,16 @@ def _semantic_usage_guidance(scope_path: str) -> list[str]:
         "Treat semantic rows as corpus-wide ranking hints, not as a scoped file filter.",
         "Use grouped hits to find local files, then inspect the file-level summary and the ranking scores together.",
         "If the local ratio stays at 0, the query terms are too broad for the package or the corpus is too noisy.",
+    ]
+
+
+def _detail_options_lines(scope_path: str) -> list[str]:
+    return [
+        "Use `refactor-cli candidate-search` for ad hoc questions without rebuilding the full report.",
+        "Add `--cbm-options` when you want raw CBM flags such as `--include-connected` or `--relationship CALLS`.",
+        f"Use `--scope-path {scope_path}` when you want a narrower package-local query than the report default.",
+        "Use `--label Class` to inspect model/data surfaces and `--label Function` to inspect flow and orchestration.",
+        "If the report says LOW_SIGNAL, narrow the terms or add CBM graph constraints such as `--min-degree 1`.",
     ]
 
 
@@ -197,6 +211,7 @@ def _configured_semantic_profiles_summary(
     cbm_binary: Path,
     scope_path: str,
     profiles: list[dict[str, Any]],
+    exclude_substrings: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     runs: list[dict[str, Any]] = []
     for profile in profiles:
@@ -211,9 +226,18 @@ def _configured_semantic_profiles_summary(
             cbm_binary=cbm_binary,
             semantic_terms=terms,
         )
-        payload = _semantic_profile_payload(result, profile_scope)
+        payload = _semantic_profile_payload(
+            result,
+            profile_scope,
+            exclude_substrings=exclude_substrings,
+        )
         top_local = payload["top_groups"][0] if payload.get("top_groups") else None
         top_row = payload["top_semantic_rows"][0] if payload.get("top_semantic_rows") else None
+        top_local_ranked = payload.get("top_local_semantic_row")
+        local_rows = int(payload.get("semantic_local_rows", 0))
+        non_local_rows = int(payload.get("semantic_non_local_rows", 0))
+        total_ranked_rows = local_rows + non_local_rows
+        local_ratio = (local_rows / total_ranked_rows) if total_ranked_rows else 0.0
         runs.append(
             {
                 "name": str(profile.get("name") or "unnamed-query"),
@@ -224,10 +248,12 @@ def _configured_semantic_profiles_summary(
                 "groups": int(payload.get("groups_count", 0)),
                 "group_rows": int(payload.get("group_rows_total", 0)),
                 "semantic_rows": int(payload.get("semantic_rows_count", 0)),
-                "local_rows": int(payload.get("semantic_local_rows", 0)),
-                "non_local_rows": int(payload.get("semantic_non_local_rows", 0)),
+                "local_rows": local_rows,
+                "non_local_rows": non_local_rows,
+                "local_ratio": local_ratio,
                 "top_local": top_local,
                 "top_semantic": top_row,
+                "top_local_ranked": top_local_ranked,
             }
         )
     return runs
@@ -237,12 +263,13 @@ def _configured_semantic_profiles_table(rows: list[dict[str, Any]]) -> str:
     if not rows:
         return "- No configured semantic query profiles."
     lines = [
-        "| Intent | Scope | Local Groups | Local Semantic Rows | Non-local Rows |",
-        "|---|---|---:|---:|---:|",
+        "| Intent | Scope | Local Groups | Local Semantic Rows | Non-local Rows | Locality |",
+        "|---|---|---:|---:|---:|---:|",
     ]
     for row in rows:
+        locality = f"{row['local_ratio'] * 100:.0f}%"
         lines.append(
-            f"| {row['name']} | {row['scope']} | {row['groups']} | {row['local_rows']} | {row['non_local_rows']} |"
+            f"| {row['name']} | {row['scope']} | {row['groups']} | {row['local_rows']} | {row['non_local_rows']} | {locality} |"
         )
     return "\n".join(lines)
 
@@ -259,11 +286,18 @@ def _configured_semantic_profile_findings(rows: list[dict[str, Any]]) -> str:
             lines.append(
                 f"  top grouped hit: {top_local.get('file', 'n/a')} -> {top_local.get('top_symbol', 'n/a')}"
             )
+        if row.get("top_local_ranked"):
+            top_local_ranked = row["top_local_ranked"]
+            lines.append(
+                f"  top in-scope ranked hit: {top_local_ranked.get('qn', 'n/a')} ({top_local_ranked.get('file', 'n/a')})"
+            )
         if row.get("top_semantic"):
             top_semantic = row["top_semantic"]
             lines.append(
                 f"  top ranked hit: {top_semantic.get('qn', 'n/a')} ({top_semantic.get('file', 'n/a')})"
             )
+        if row["local_ratio"] < 0.4:
+            lines.append("  signal quality: low locality; tighten query terms or reduce indexed scope")
     return "\n".join(lines)
 
 
@@ -310,12 +344,24 @@ def _normalize_scoped_name(raw: str, scope_prefix: str) -> str:
 
 
 def _semantic_profile_payload(
-    semantic_doc: dict[str, Any], scope_path: str
+    semantic_doc: dict[str, Any],
+    scope_path: str,
+    exclude_substrings: list[str] | None = None,
 ) -> dict[str, Any]:
     result_doc = semantic_doc.get("result", semantic_doc)
     structured = result_doc.get("payload", {}).get("structuredContent", {})
     groups = structured.get("groups", [])
-    semantic_rows = structured.get("semantic", {}).get("rows", [])
+    semantic_rows_raw = structured.get("semantic", {}).get("rows", [])
+    excluded_tokens = [token for token in (exclude_substrings or []) if token]
+    semantic_rows: list[Any] = []
+    for row in semantic_rows_raw:
+        if len(row) < 3:
+            continue
+        qn = str(row[0])
+        file_path = str(row[2])
+        if any(token in qn or token in file_path for token in excluded_tokens):
+            continue
+        semantic_rows.append(row)
     top_groups: list[dict[str, Any]] = []
     for group in groups[:3]:
         rows = group.get("rows", [])
@@ -339,6 +385,20 @@ def _semantic_profile_payload(
                 "score": row[3],
             }
         )
+    top_local_semantic_row: dict[str, Any] | None = None
+    for row in semantic_rows:
+        if len(row) < 4:
+            continue
+        file_path = str(row[2])
+        if not file_path.startswith(scope_path):
+            continue
+        top_local_semantic_row = {
+            "qn": row[0],
+            "label": row[1],
+            "file": row[2],
+            "score": row[3],
+        }
+        break
     return {
         "groups_count": len(groups),
         "group_rows_total": sum(len(group.get("rows", [])) for group in groups),
@@ -355,6 +415,7 @@ def _semantic_profile_payload(
         ),
         "top_groups": top_groups,
         "top_semantic_rows": top_semantic_rows,
+        "top_local_semantic_row": top_local_semantic_row,
     }
 
 
@@ -877,6 +938,7 @@ def build_candidate_report(
     semantic_query_profiles: list[dict[str, Any]] | None = None,
 ) -> str:
     summary = load_json(input_dir / "summary.json")
+    scope_policy = summary.get("scope", {})
     source_index = load_json(input_dir / "source_index.json")
     architecture = load_json(input_dir / "architecture_report.json")
     semantic = load_json(input_dir / "semantic_retrieval.json")
@@ -969,6 +1031,7 @@ def build_candidate_report(
         cbm_binary=cbm_binary,
         scope_path=scope_path,
         profiles=configured_profiles,
+        exclude_substrings=scope_policy.get("exclude_qn_substrings", []),
     )
     if include_demo_artifacts:
         semantic_profiles = _semantic_query_profiles(scope_path)
@@ -999,7 +1062,11 @@ def build_candidate_report(
                     "question": profile["name"],
                     "query": profile["query"],
                     "why": profile["why"],
-                    "result": _semantic_profile_payload(profile_result, scope_path),
+                    "result": _semantic_profile_payload(
+                        profile_result,
+                        scope_path,
+                        exclude_substrings=scope_policy.get("exclude_qn_substrings", []),
+                    ),
                     "raw_result": profile_result,
                     "structural_pattern": profile["structural_pattern"],
                     "structural_result": _structural_search_payload(structural_result),
@@ -1011,7 +1078,11 @@ def build_candidate_report(
     sizes = _artifact_size_rows(input_dir)
     local_groups = _top_local_groups(scoped_semantic, scope_path)
     local_semantic_stats = _semantic_group_summary(scoped_semantic, scope_path)
-    semantic_noise = _semantic_noise_summary(semantic, scope_path)
+    semantic_noise = _semantic_noise_summary(
+        semantic,
+        scope_path,
+        exclude_substrings=scope_policy.get("exclude_qn_substrings", []),
+    )
     module_summary = _relation_counters(module_dep_rows, scope_prefix)
     function_summary = _relation_counters(scoped_dep_rows, scope_prefix)
     class_summary = _relation_counters(class_method_rows, scope_prefix)
@@ -1024,7 +1095,6 @@ def build_candidate_report(
     )
 
     modules = summary["modules"]
-    scope_policy = summary.get("scope", {})
     daemon_policy = scope_policy.get("daemon_mode", "unspecified")
     readiness_items = [
         ("Indexing and project registration", "OK"),
@@ -1182,6 +1252,11 @@ This report converts the raw Phase A candidate artifacts into a human-readable s
 
 {_mermaid_status(modules)}
 
+Example:
+- Rerun the pipeline with `refactor-cli candidate-phase-a --config .refactor/config.json`.
+- Then render the report with `refactor-cli candidate-report --config .refactor/config.json`.
+- If a module is FAIL, start with the failed artifact rather than the report itself.
+
 ## Artifact Sizes
 
 | Artifact | Bytes |
@@ -1189,6 +1264,11 @@ This report converts the raw Phase A candidate artifacts into a human-readable s
 {size_lines}
 
 {_mermaid_artifact_sizes(sizes)}
+
+Example:
+- Larger JSON files usually mean broader graph output or more search hits.
+- Open the matching artifact in `.refactor/analysis/candidates/` when you need raw rows or payload fields.
+- Compare `semantic_retrieval.json` against `dependency_graph.json` to see ranking vs. raw edges.
 
 ## What The Raw Files Mean
 
@@ -1198,12 +1278,22 @@ This report converts the raw Phase A candidate artifacts into a human-readable s
 - `architecture_report.json`: highest-value human summary
 - `summary.json`: pass/fail snapshot
 
+Examples:
+- If `semantic_retrieval.json` looks noisy, run `refactor-cli candidate-search --label Class` and tighten the query.
+- If `source_index.json` is wrong, check `.refactor/config.json` and rerun Phase A.
+- If you only need the architecture summary, open `architecture_report.json` first.
+
 ## Evaluation Matrix
 
 {_markdown_input_table(input_rows)}
 
 Observation:
 - This makes the pipeline traceable. Each artifact can now be judged by the exact input it used, the candidate that produced it, and the meaning of the output.
+
+Example:
+- To inspect a specific artifact, run the matching wrapper command instead of opening the JSON first.
+- For discovery questions, `candidate-search` is the shortest path.
+- For a full structural refresh, use `candidate-phase-a` and then `candidate-report`.
 
 ## Readiness Checklist
 
@@ -1214,6 +1304,11 @@ Observation:
 Policy note:
 - Persistent daemon mode is intentionally not part of this project's operating model.
 - Current scope policy: file scope `{scope_policy.get("scope_path", scope_path)}`, qn scope `{scope_policy.get("scope_qn_prefix", "n/a")}`, excluded qn substrings `{scope_policy.get("exclude_qn_substrings", [])}`.
+
+Examples:
+- `LOW_SIGNAL` means the semantic query should be narrowed or rewritten.
+- `PARTIAL` on dependency extraction usually means the QN scope needs adjustment.
+- `OUT_OF_SCOPE` on daemon mode means you can ignore that item for this project.
 
 ## Index Health
 
@@ -1227,10 +1322,20 @@ Observation:
 - The index succeeded and is large enough for meaningful graph analysis.
 - The corpus may include auxiliary folders beyond `{scope_path}`, so raw full-project results are noisier than the scoped package.
 
+Example:
+- If this section shows extra noise, try `refactor-cli candidate-search --scope-path {scope_path} --label Class`.
+- Add `--cbm-options "--include-connected"` when you want CBM to show connected context around the matches.
+- Use `--cbm-options "--min-degree 1"` to suppress weaker graph noise.
+
 ## Full-Corpus Architecture Snapshot
 
 - Languages detected in the indexed corpus: {", ".join(f"{name}={count}" for name, count in full_languages[:6])}
 - This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
+
+Example:
+- This snapshot is useful when you want a quick sanity check on scope contamination.
+- If full-corpus results look too broad, switch to a scoped query with `--scope-path {scope_path}`.
+- For a tighter class view, add `--label Class`.
 
 ## Scoped Architecture For `{scope_path}`
 
@@ -1256,6 +1361,10 @@ Observation:
 - The real package is a compact Python CLI package.
 - The central coordination points are discovery/config/file-writing helpers and the candidate integration runner.
 
+Example:
+- Use `refactor-cli candidate-search --scope-path {scope_path} --label Function` to inspect the implementation entrypoints behind this section.
+- If you need more context around a result, add `--cbm-options "--include-connected"`.
+
 ## Scoped Module Dependencies
 
 - Data source: {module_dep_source}
@@ -1272,6 +1381,10 @@ Highest fan-in modules:
 Observation:
 - Module-level imports show how the package is stitched together structurally.
 - This is the most stable dependency view when function-call extraction is sparse or noisy.
+
+Example:
+- Query module relationships directly with `refactor-cli candidate-search --scope-path {scope_path} --label Function --cbm-options "--relationship IMPORTS"`.
+- Add `--cbm-options "--include-connected"` to include attached context.
 
 ## Scoped Function Dependencies
 
@@ -1296,6 +1409,10 @@ Observation:
 - Function-call edges are good for hotspot inspection, but module imports remain the more stable architectural signal.
 - Suspicious cross-corpus edges should still be treated as a scoping or indexing problem, not as trustworthy architecture data.
 
+Example:
+- Use `refactor-cli candidate-search --scope-path {scope_path} --label Function --cbm-options "--relationship CALLS"` to focus on call flow.
+- If the query is too broad, add `--cbm-options "--min-degree 1"`.
+
 ## Scoped Class / Model Surface
 
 This section uses the class and method nodes exposed by codebase-memory. In Python repositories this is usually the closest available proxy for model-level structure.
@@ -1315,6 +1432,10 @@ Observation:
 - This section is only as rich as the repository's class usage. Function-heavy scripts will naturally produce a sparse model view.
 - For dataclass-heavy or OO-heavy projects, this becomes the best high-level view of model boundaries and behavior ownership.
 
+Example:
+- Use `refactor-cli candidate-search --scope-path {scope_path} --label Class` to inspect the same model surface interactively.
+- Add `--cbm-options "--include-connected"` if you want the surrounding function context for a class hit.
+
 ## Semantic Retrieval Interpretation
 
 The stored artifact is evaluated as-is, without generating extra example queries unless explicitly requested.
@@ -1323,6 +1444,11 @@ What the output looks like:
 - `groups`: files with local matches, each row showing `name`, `label`, `lines`, `in`, `out`
 - `semantic.rows`: ranked hits with `qn`, `label`, `file`, and `score`
 - In other words, this is ranked graph search output, not a generated answer.
+
+Examples:
+- For the configured profile queries, run `refactor-cli candidate-search --profile "Calculation and processing"`.
+- For a one-off question, pass `--semantic-query '["simulation","run_model","throughput","servicegrad","kanban"]'`.
+- For more context around a hit, add `--cbm-options "--include-connected"`.
 
 How semantic is it?
 - The search uses semantic terms, but the answer is still grounded in the indexed graph.
@@ -1361,6 +1487,9 @@ What this means in practice:
 
 How to use it here:
 {_line_list(_semantic_usage_guidance(scope_path), "No guidance available.")}
+
+More detail options:
+{_line_list(_detail_options_lines(scope_path), "No detail options available.")}
 
 {demo_artifacts}
 

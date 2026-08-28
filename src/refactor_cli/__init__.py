@@ -30,7 +30,7 @@ from refactor_cli.discovery import (
 )
 from refactor_cli.architecture_report import collect_architecture_report
 from refactor_cli.candidate_report import build_candidate_report
-from refactor_cli.candidate_tools import resolve_cbm_binary
+from refactor_cli.candidate_tools import resolve_cbm_binary, run_cbm_tool
 from refactor_cli.dependency_graph import collect_dependency_graph
 from refactor_cli.file_io import (
     archive_patch,
@@ -103,6 +103,15 @@ def _resolve_optional_project_root(
     if config:
         return resolve_project_root(config_path, config)
     return Path(".").resolve()
+
+
+def _find_default_config_path(start: Path | None = None) -> Path:
+    current = (start or Path.cwd()).resolve()
+    for candidate in [current, *current.parents]:
+        config_path = candidate / DEFAULT_CONFIG
+        if config_path.exists():
+            return config_path
+    return DEFAULT_CONFIG.resolve()
 
 
 def _semantic_terms_setting(value: str | list[str] | None) -> list[str]:
@@ -260,6 +269,128 @@ def _resolve_candidate_report_settings(args: argparse.Namespace) -> dict[str, An
         ),
     }
     return settings
+
+
+def _project_name_default(project_root: Path, configured: Any) -> str:
+    if configured is None:
+        return project_root.resolve().name
+    text = str(configured).strip()
+    return text or project_root.resolve().name
+
+
+def _parse_semantic_query(value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if raw.startswith("["):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                terms = [str(token).strip() for token in parsed if str(token).strip()]
+                return terms or None
+        except json.JSONDecodeError:
+            pass
+    terms = [token.strip() for token in raw.split(",") if token.strip()]
+    return terms or None
+
+
+def _parse_cbm_options(raw_options: str | None) -> dict[str, Any]:
+    if raw_options is None or not raw_options.strip():
+        return {}
+    tokens = raw_options.strip().split()
+    parsed: dict[str, Any] = {}
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if not token.startswith("--"):
+            raise ValueError(
+                f"CBM options must start with --flag names; got '{token}'"
+            )
+        key = token.lstrip("-").replace("-", "_")
+        index += 1
+        value: Any = True
+        if index < len(tokens) and not tokens[index].startswith("--"):
+            value = tokens[index]
+            index += 1
+        parsed[key] = value
+    return parsed
+
+
+def _profile_terms_setting(profile: dict[str, Any]) -> list[str]:
+    terms = profile.get("semantic_terms")
+    if isinstance(terms, list):
+        out = [str(token).strip() for token in terms if str(token).strip()]
+        if out:
+            return out
+    query = str(profile.get("query", "")).strip()
+    return [token.strip() for token in query.split() if token.strip()]
+
+
+def _resolve_candidate_search_settings(args: argparse.Namespace) -> dict[str, Any]:
+    config_path = Path(args.config) if getattr(args, "config", None) else _find_default_config_path()
+    config = _load_optional_config(config_path)
+    analysis = _candidate_analysis_config(config)
+    project_root = _resolve_optional_project_root(args.project_root, config_path, config)
+
+    configured_profiles = _semantic_query_profiles_setting(
+        analysis.get("semantic_query_profiles")
+    )
+    selected_profile: dict[str, Any] | None = None
+    if args.profile:
+        needle = args.profile.strip().lower()
+        for profile in configured_profiles:
+            if str(profile.get("name", "")).strip().lower() == needle:
+                selected_profile = profile
+                break
+        if selected_profile is None:
+            available = ", ".join(p.get("name", "") for p in configured_profiles) or "none"
+            raise ValueError(
+                f"Unknown semantic profile '{args.profile}'. Available profiles: {available}"
+            )
+
+    scope_path = str(
+        _config_or_default(
+            args.scope_path,
+            (selected_profile or {}).get("scope_path") or analysis.get("scope_path", ""),
+        )
+    ).strip()
+
+    explicit_terms = _parse_semantic_query(args.semantic_query)
+    if explicit_terms is not None:
+        semantic_terms = explicit_terms
+    elif selected_profile is not None:
+        semantic_terms = _profile_terms_setting(selected_profile)
+    else:
+        semantic_terms = _semantic_terms_setting(analysis.get("semantic_terms"))
+
+    default_file_pattern = f"{scope_path}/*" if scope_path else None
+    cbm_options = _parse_cbm_options(getattr(args, "cbm_options", None))
+
+    return {
+        "config_path": config_path,
+        "project_root": project_root,
+        "project_name": _project_name_default(
+            project_root,
+            _config_or_default(args.project_name, analysis.get("project_name")),
+        ),
+        "cbm_binary": resolve_cbm_binary(
+            _config_or_default(args.cbm_binary, analysis.get("cbm_binary"))
+        ),
+        "semantic_query": semantic_terms,
+        "label": _config_or_default(args.label, None),
+        "file_pattern": _config_or_default(args.file_pattern, default_file_pattern),
+        "limit": int(
+            _config_or_default(
+                args.limit,
+                analysis.get("semantic_limit", 100),
+            )
+        ),
+        "format": str(_config_or_default(args.format, "json")),
+        "profile": selected_profile,
+        "cbm_options": cbm_options,
+    }
 
 
 def split_nodes_by_symbol(
@@ -1221,6 +1352,48 @@ def cmd_candidate_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_candidate_search(args: argparse.Namespace) -> int:
+    settings = _resolve_candidate_search_settings(args)
+    flags: dict[str, Any] = {
+        "project": settings["project_name"],
+        "limit": settings["limit"],
+        "format": settings["format"],
+    }
+    if settings["semantic_query"]:
+        flags["semantic_query"] = settings["semantic_query"]
+    if settings["label"]:
+        flags["label"] = settings["label"]
+    if settings["file_pattern"]:
+        flags["file_pattern"] = settings["file_pattern"]
+    flags.update(settings.get("cbm_options", {}))
+
+    result = run_cbm_tool(
+        settings["cbm_binary"],
+        "search_graph",
+        flags,
+        cwd=settings["project_root"],
+    )
+    if not result.get("ok"):
+        print("CANDIDATE SEARCH FAILED")
+        print(f"  project: {settings['project_name']}")
+        print(f"  command: {' '.join(result.get('command', []))}")
+        if result.get("stderr"):
+            print(result["stderr"].strip())
+        return 1
+
+    profile = settings.get("profile")
+    if profile is not None:
+        print(f"PROFILE: {profile.get('name', '')}")
+    print("CANDIDATE SEARCH COMPLETE")
+    print(f"  project: {settings['project_name']}")
+    print(f"  scope: {settings.get('file_pattern') or 'none'}")
+    print(f"  query: {settings['semantic_query']}")
+    print(f"  label: {settings.get('label') or 'any'}")
+    print(f"  limit: {settings['limit']}")
+    print(json.dumps(result.get("payload", {}), ensure_ascii=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Project-agnostic structural refactoring tool"
@@ -1380,6 +1553,44 @@ def build_parser() -> argparse.ArgumentParser:
     )
     candidate_report_parser.set_defaults(include_demo_artifacts=None)
     candidate_report_parser.set_defaults(func=cmd_candidate_report)
+
+    candidate_search_parser = subparsers.add_parser(
+        "candidate-search",
+        help="Run CBM search_graph with defaults from candidate_analysis config",
+    )
+    candidate_search_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    candidate_search_parser.add_argument("--project-root", default=None)
+    candidate_search_parser.add_argument("--project-name", default=None)
+    candidate_search_parser.add_argument("--cbm-binary", default=None)
+    candidate_search_parser.add_argument(
+        "--profile",
+        default=None,
+        help="Name of a configured semantic_query_profile to run",
+    )
+    candidate_search_parser.add_argument(
+        "--semantic-query",
+        default=None,
+        help="Semantic terms as JSON array or comma-separated list; overrides profile/config",
+    )
+    candidate_search_parser.add_argument("--scope-path", default=None)
+    candidate_search_parser.add_argument(
+        "--file-pattern",
+        default=None,
+        help="CBM file pattern; defaults to '<scope-path>/*'",
+    )
+    candidate_search_parser.add_argument("--label", default=None)
+    candidate_search_parser.add_argument("--limit", type=int, default=None)
+    candidate_search_parser.add_argument(
+        "--format",
+        default="json",
+        choices=["json", "tree"],
+    )
+    candidate_search_parser.add_argument(
+        "--cbm-options",
+        default=None,
+        help="Raw CBM flags tail as '--flag value --flag2 value2'; added after wrapper defaults",
+    )
+    candidate_search_parser.set_defaults(func=cmd_candidate_search)
 
     return parser
 
