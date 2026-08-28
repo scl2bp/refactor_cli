@@ -3,3 +3,6 @@ uv.lock
 __pycache__
 .refactor/patches
 .venv
+.eval/logs
+.eval/tools
+.eval/venvs

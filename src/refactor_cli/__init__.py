@@ -13,6 +13,7 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import libcst as cst
 
@@ -65,6 +66,200 @@ DEFAULT_CANDIDATE_REPORT = DEFAULT_CANDIDATE_OUTPUT_DIR / "report.md"
 # Format: files is a dict {path: [nodes]}
 # Each node is either a plain string  "Kind name"  (leaf)
 # or a one-key dict  {"Kind name": [children]}  (with members).
+
+
+def _load_optional_config(config_path: Path) -> dict[str, Any]:
+    if config_path.exists():
+        return load_config(config_path)
+    return {}
+
+
+def _candidate_analysis_config(config: dict[str, Any]) -> dict[str, Any]:
+    raw = config.get("candidate_analysis", {})
+    return raw if isinstance(raw, dict) else {}
+
+
+def _config_or_default(value: Any, fallback: Any) -> Any:
+    if value is None:
+        return fallback
+    if isinstance(value, str) and not value.strip():
+        return fallback
+    return value
+
+
+def _resolve_path_setting(project_root: Path, value: str | None, default: Path) -> Path:
+    raw = _config_or_default(value, str(default))
+    path = Path(raw)
+    if path.is_absolute():
+        return path
+    return (project_root / path).resolve()
+
+
+def _resolve_optional_project_root(
+    args_project_root: str | None, config_path: Path, config: dict[str, Any]
+) -> Path:
+    if args_project_root:
+        return Path(args_project_root).resolve()
+    if config:
+        return resolve_project_root(config_path, config)
+    return Path(".").resolve()
+
+
+def _semantic_terms_setting(value: str | list[str] | None) -> list[str]:
+    if value is None:
+        return ["dependency", "refactor", "module", "call graph"]
+    if isinstance(value, list):
+        return [str(term).strip() for term in value if str(term).strip()]
+    return [term.strip() for term in value.split(",") if term.strip()]
+
+
+def _exclude_substrings_setting(value: list[str] | None) -> list[str]:
+    if value is None:
+        return [".eval."]
+    return [str(token).strip() for token in value if str(token).strip()]
+
+
+def _semantic_query_profiles_setting(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        query = str(item.get("query", "")).strip()
+        terms = item.get("semantic_terms")
+        if not name:
+            continue
+        if not query and not (isinstance(terms, list) and terms):
+            continue
+        row: dict[str, Any] = {
+            "name": name,
+            "query": query,
+            "why": str(item.get("why", "")).strip(),
+        }
+        scope_path = str(item.get("scope_path", "")).strip()
+        if scope_path:
+            row["scope_path"] = scope_path
+        if isinstance(terms, list):
+            row["semantic_terms"] = [
+                str(token).strip() for token in terms if str(token).strip()
+            ]
+        out.append(row)
+    return out
+
+
+def _load_summary_if_present(input_dir: Path) -> dict[str, Any]:
+    summary_path = input_dir / "summary.json"
+    if summary_path.exists():
+        return load_json(summary_path)
+    return {}
+
+
+def _resolve_candidate_phase_a_settings(args: argparse.Namespace) -> dict[str, Any]:
+    config_path = Path(args.config)
+    config = _load_optional_config(config_path)
+    analysis = _candidate_analysis_config(config)
+
+    project_root = _resolve_optional_project_root(args.project_root, config_path, config)
+    scope_path = str(_config_or_default(args.scope_path, analysis.get("scope_path", ""))).strip()
+    scope_qn_prefix = str(
+        _config_or_default(
+            args.scope_qn_prefix,
+            analysis.get("scope_qn_prefix") or scope_path.replace("/", "."),
+        )
+    ).strip()
+
+    settings = {
+        "config_path": config_path,
+        "project_root": project_root,
+        "project_name": _config_or_default(args.project_name, analysis.get("project_name")),
+        "cbm_binary": resolve_cbm_binary(_config_or_default(args.cbm_binary, analysis.get("cbm_binary"))),
+        "index_mode": str(_config_or_default(args.index_mode, analysis.get("index_mode", "moderate"))),
+        "max_rows": int(_config_or_default(args.max_rows, analysis.get("max_rows", 5000))),
+        "semantic_terms": _semantic_terms_setting(
+            _config_or_default(args.semantic_terms, analysis.get("semantic_terms"))
+        ),
+        "semantic_limit": int(
+            _config_or_default(args.semantic_limit, analysis.get("semantic_limit", 100))
+        ),
+        "scope_path": scope_path,
+        "scope_qn_prefix": scope_qn_prefix,
+        "exclude_qn_substrings": _exclude_substrings_setting(
+            _config_or_default(
+                args.exclude_qn_substring,
+                analysis.get("exclude_qn_substrings"),
+            )
+        ),
+        "include_coderag_validate": bool(
+            _config_or_default(
+                args.include_coderag_validate,
+                analysis.get("include_coderag_validate", False),
+            )
+        ),
+        "coderag_path": _resolve_path_setting(
+            project_root,
+            _config_or_default(args.coderag_path, analysis.get("coderag_path")),
+            Path(".eval/candidates/coderag"),
+        ),
+        "output_dir": _resolve_path_setting(
+            project_root,
+            _config_or_default(args.output_dir, analysis.get("output_dir")),
+            DEFAULT_CANDIDATE_OUTPUT_DIR,
+        ),
+        "semantic_query_profiles": _semantic_query_profiles_setting(
+            analysis.get("semantic_query_profiles")
+        ),
+    }
+    return settings
+
+
+def _resolve_candidate_report_settings(args: argparse.Namespace) -> dict[str, Any]:
+    config_path = Path(args.config)
+    config = _load_optional_config(config_path)
+    analysis = _candidate_analysis_config(config)
+
+    project_root = _resolve_optional_project_root(args.project_root, config_path, config)
+    input_dir = _resolve_path_setting(
+        project_root,
+        _config_or_default(args.input_dir, analysis.get("output_dir")),
+        DEFAULT_CANDIDATE_OUTPUT_DIR,
+    )
+    summary = _load_summary_if_present(input_dir)
+    summary_scope = summary.get("scope", {}) if isinstance(summary.get("scope", {}), dict) else {}
+
+    scope_path = str(
+        _config_or_default(
+            args.scope_path,
+            analysis.get("scope_path") or summary_scope.get("scope_path") or "",
+        )
+    ).strip()
+
+    settings = {
+        "config_path": config_path,
+        "project_root": project_root,
+        "input_dir": input_dir,
+        "output_path": _resolve_path_setting(
+            project_root,
+            _config_or_default(args.output, analysis.get("report_output")),
+            DEFAULT_CANDIDATE_REPORT,
+        ),
+        "scope_path": scope_path,
+        "cbm_binary": _config_or_default(
+            args.cbm_binary,
+            analysis.get("cbm_binary") or summary.get("cbm_binary"),
+        ),
+        "include_demo_artifacts": bool(
+            _config_or_default(
+                args.include_demo_artifacts,
+                analysis.get("include_demo_artifacts", False),
+            )
+        ),
+        "semantic_query_profiles": _semantic_query_profiles_setting(
+            analysis.get("semantic_query_profiles")
+        ),
+    }
+    return settings
 
 
 def split_nodes_by_symbol(
@@ -653,6 +848,48 @@ def cmd_init(args: argparse.Namespace) -> int:
             "include": ["main.py", "src/**/*.py", "tests/**/*.py", "tools/**/*.py"],
             "exclude": [".venv/**", "**/__pycache__/**", "build/**", "dist/**"],
         },
+        "candidate_analysis": {
+            "project_name": None,
+            "cbm_binary": None,
+            "index_mode": "moderate",
+            "max_rows": 5000,
+            "semantic_terms": ["dependency", "refactor", "module", "call graph"],
+            "semantic_limit": 100,
+            "scope_path": "",
+            "scope_qn_prefix": "",
+            "exclude_qn_substrings": [".eval."],
+            "include_coderag_validate": False,
+            "coderag_path": ".eval/candidates/coderag",
+            "output_dir": ".refactor/analysis/candidates",
+            "report_output": ".refactor/analysis/candidates/report.md",
+            "include_demo_artifacts": False,
+            "semantic_query_profiles": [
+                {
+                    "name": "Input processing",
+                    "query": "config load parse settings schema validation",
+                    "why": "Locate where project input is loaded and normalized",
+                    "scope_path": "",
+                },
+                {
+                    "name": "Calculation and processing",
+                    "query": "core algorithm simulation optimize compute run_model",
+                    "why": "Identify the main calculation pipeline",
+                    "scope_path": "",
+                },
+                {
+                    "name": "Methodology",
+                    "query": "assumption strategy workflow decision heuristic",
+                    "why": "Find modules that explain process assumptions and methods",
+                    "scope_path": "",
+                },
+                {
+                    "name": "Report generation",
+                    "query": "report export dashboard plot summary",
+                    "why": "Find where user-facing results are built",
+                    "scope_path": "",
+                },
+            ],
+        },
     }
 
     write_json(config_path, template)
@@ -849,20 +1086,21 @@ def cmd_apply_tree_edit(args: argparse.Namespace) -> int:
 
 
 def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
-    project_root = Path(args.project_root).resolve()
+    settings = _resolve_candidate_phase_a_settings(args)
+    project_root = settings["project_root"]
     if not project_root.exists():
         raise FileNotFoundError(f"Project root not found: {project_root}")
 
-    cbm_binary = resolve_cbm_binary(args.cbm_binary)
-    output_dir = Path(args.output_dir)
+    cbm_binary = settings["cbm_binary"]
+    output_dir = settings["output_dir"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
     source_index = run_source_index(
         project_root=project_root,
         cbm_binary=cbm_binary,
-        project_name=args.project_name,
-        config_path=Path(args.config),
-        mode=args.index_mode,
+        project_name=settings["project_name"],
+        config_path=settings["config_path"],
+        mode=settings["index_mode"],
     )
     write_json(output_dir / "source_index.json", source_index)
     if not source_index.get("ok"):
@@ -871,29 +1109,27 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
         return 1
 
     project_name = source_index["project_name"]
-    scope_path = args.scope_path.strip() if args.scope_path else ""
-    scope_qn_prefix = args.scope_qn_prefix.strip() if args.scope_qn_prefix else ""
-    exclude_qn_substrings = [
-        token.strip() for token in args.exclude_qn_substring if token.strip()
-    ]
+    scope_path = settings["scope_path"]
+    scope_qn_prefix = settings["scope_qn_prefix"]
+    exclude_qn_substrings = settings["exclude_qn_substrings"]
 
     dependency = collect_dependency_graph(
         cbm_binary=cbm_binary,
         project_root=project_root,
         project_name=project_name,
-        max_rows=args.max_rows,
+        max_rows=settings["max_rows"],
         scope_qn_prefix=scope_qn_prefix or None,
         exclude_qn_substrings=exclude_qn_substrings,
     )
     write_json(output_dir / "dependency_graph.json", dependency)
 
-    terms = [term.strip() for term in args.semantic_terms.split(",") if term.strip()]
+    terms = settings["semantic_terms"]
     semantic = collect_semantic_retrieval(
         cbm_binary=cbm_binary,
         project_root=project_root,
         project_name=project_name,
         semantic_terms=terms,
-        limit=args.semantic_limit,
+        limit=settings["semantic_limit"],
         file_pattern=f"{scope_path}/*" if scope_path else None,
     )
     write_json(output_dir / "semantic_retrieval.json", semantic)
@@ -908,8 +1144,8 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
     write_json(output_dir / "architecture_report.json", architecture)
 
     coderag_result = None
-    if args.include_coderag_validate:
-        coderag_path = Path(args.coderag_path)
+    if settings["include_coderag_validate"]:
+        coderag_path = settings["coderag_path"]
         if coderag_path.exists():
             coderag_result = run_coderag_validate_only(
                 coderag_root=coderag_path,
@@ -933,6 +1169,7 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
             "scope_path": scope_path,
             "scope_qn_prefix": scope_qn_prefix,
             "exclude_qn_substrings": exclude_qn_substrings,
+            "semantic_query_profiles": settings["semantic_query_profiles"],
             "daemon_mode": "out_of_scope",
         },
         "modules": {
@@ -961,17 +1198,20 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
 
 
 def cmd_candidate_report(args: argparse.Namespace) -> int:
-    input_dir = Path(args.input_dir)
+    settings = _resolve_candidate_report_settings(args)
+    input_dir = settings["input_dir"]
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
-    output_path = Path(args.output)
+    output_path = settings["output_path"]
     report = build_candidate_report(
         input_dir=input_dir,
         output_path=output_path,
-        scope_path=args.scope_path,
-        project_root=Path(args.project_root).resolve() if args.project_root else None,
-        cbm_binary_path=args.cbm_binary,
+        scope_path=settings["scope_path"],
+        project_root=settings["project_root"],
+        cbm_binary_path=settings["cbm_binary"],
+        include_demo_artifacts=settings["include_demo_artifacts"],
+        semantic_query_profiles=settings["semantic_query_profiles"],
     )
 
     print("CANDIDATE REPORT WRITTEN")
@@ -1058,44 +1298,45 @@ def build_parser() -> argparse.ArgumentParser:
         "candidate-phase-a",
         help="Run adapter-based candidate analysis modules and write normalized artifacts",
     )
-    phase_a_parser.add_argument("--project-root", default=".")
+    phase_a_parser.add_argument("--project-root", default=None)
     phase_a_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     phase_a_parser.add_argument("--project-name", default=None)
     phase_a_parser.add_argument("--cbm-binary", default=None)
-    phase_a_parser.add_argument("--index-mode", default="moderate")
-    phase_a_parser.add_argument("--max-rows", type=int, default=5000)
+    phase_a_parser.add_argument("--index-mode", default=None)
+    phase_a_parser.add_argument("--max-rows", type=int, default=None)
     phase_a_parser.add_argument(
         "--semantic-terms",
-        default="dependency,refactor,module,call graph",
+        default=None,
     )
-    phase_a_parser.add_argument("--semantic-limit", type=int, default=100)
+    phase_a_parser.add_argument("--semantic-limit", type=int, default=None)
     phase_a_parser.add_argument(
         "--scope-path",
-        default="src/refactor_cli",
+        default=None,
         help="File path scope used for semantic and architecture queries",
     )
     phase_a_parser.add_argument(
         "--scope-qn-prefix",
-        default="refactor_cli.src.refactor_cli",
+        default=None,
         help="Qualified-name prefix used to scope dependency edge extraction",
     )
     phase_a_parser.add_argument(
         "--exclude-qn-substring",
         action="append",
-        default=[".eval."],
+        default=None,
         help="Substring filter applied to dependency source/target qualified names (repeatable)",
     )
     phase_a_parser.add_argument(
         "--include-coderag-validate",
         action="store_true",
+        default=None,
     )
     phase_a_parser.add_argument(
         "--coderag-path",
-        default=".eval/candidates/coderag",
+        default=None,
     )
     phase_a_parser.add_argument(
         "--output-dir",
-        default=str(DEFAULT_CANDIDATE_OUTPUT_DIR),
+        default=None,
     )
     phase_a_parser.set_defaults(func=cmd_candidate_phase_a)
 
@@ -1103,17 +1344,18 @@ def build_parser() -> argparse.ArgumentParser:
         "candidate-report",
         help="Render candidate analysis artifacts as Markdown plus Mermaid visualizations",
     )
+    candidate_report_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     candidate_report_parser.add_argument(
         "--input-dir",
-        default=str(DEFAULT_CANDIDATE_OUTPUT_DIR),
+        default=None,
     )
     candidate_report_parser.add_argument(
         "--output",
-        default=str(DEFAULT_CANDIDATE_REPORT),
+        default=None,
     )
     candidate_report_parser.add_argument(
         "--scope-path",
-        default="src/refactor_cli",
+        default=None,
     )
     candidate_report_parser.add_argument(
         "--project-root",
@@ -1123,6 +1365,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--cbm-binary",
         default=None,
     )
+    demo_group = candidate_report_parser.add_mutually_exclusive_group()
+    demo_group.add_argument(
+        "--include-demo-artifacts",
+        dest="include_demo_artifacts",
+        action="store_true",
+        help="Include example semantic searches and search-hit diagrams in the report",
+    )
+    demo_group.add_argument(
+        "--no-demo-artifacts",
+        dest="include_demo_artifacts",
+        action="store_false",
+        help="Suppress example semantic searches and search-hit diagrams in the report",
+    )
+    candidate_report_parser.set_defaults(include_demo_artifacts=None)
     candidate_report_parser.set_defaults(func=cmd_candidate_report)
 
     return parser

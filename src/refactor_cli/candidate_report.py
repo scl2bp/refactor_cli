@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
+from collections import Counter, defaultdict
 import datetime as dt
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from refactor_cli.candidate_tools import resolve_cbm_binary, run_cbm_tool
@@ -174,6 +176,139 @@ def _semantic_query_profiles(scope_path: str) -> list[dict[str, str]]:
     ]
 
 
+def _profile_terms(profile: dict[str, Any]) -> list[str]:
+    terms = profile.get("semantic_terms")
+    if isinstance(terms, list):
+        out = [str(token).strip() for token in terms if str(token).strip()]
+        if out:
+            return out
+    query = str(profile.get("query", "")).strip()
+    return [token.strip() for token in query.split() if token.strip()]
+
+
+def _profile_scope(profile: dict[str, Any], default_scope: str) -> str:
+    return str(profile.get("scope_path") or profile.get("scope") or default_scope).strip()
+
+
+def _configured_semantic_profiles_summary(
+    *,
+    project_root: Path,
+    project_name: str,
+    cbm_binary: Path,
+    scope_path: str,
+    profiles: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    runs: list[dict[str, Any]] = []
+    for profile in profiles:
+        profile_scope = _profile_scope(profile, scope_path)
+        terms = _profile_terms(profile)
+        if not terms:
+            continue
+        result = _scoped_semantic_search(
+            project_root=project_root,
+            project_name=project_name,
+            scope_path=profile_scope,
+            cbm_binary=cbm_binary,
+            semantic_terms=terms,
+        )
+        payload = _semantic_profile_payload(result, profile_scope)
+        top_local = payload["top_groups"][0] if payload.get("top_groups") else None
+        top_row = payload["top_semantic_rows"][0] if payload.get("top_semantic_rows") else None
+        runs.append(
+            {
+                "name": str(profile.get("name") or "unnamed-query"),
+                "why": str(profile.get("why") or ""),
+                "scope": profile_scope,
+                "query": str(profile.get("query") or " ".join(terms)),
+                "terms": terms,
+                "groups": int(payload.get("groups_count", 0)),
+                "group_rows": int(payload.get("group_rows_total", 0)),
+                "semantic_rows": int(payload.get("semantic_rows_count", 0)),
+                "local_rows": int(payload.get("semantic_local_rows", 0)),
+                "non_local_rows": int(payload.get("semantic_non_local_rows", 0)),
+                "top_local": top_local,
+                "top_semantic": top_row,
+            }
+        )
+    return runs
+
+
+def _configured_semantic_profiles_table(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return "- No configured semantic query profiles."
+    lines = [
+        "| Intent | Scope | Local Groups | Local Semantic Rows | Non-local Rows |",
+        "|---|---|---:|---:|---:|",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['name']} | {row['scope']} | {row['groups']} | {row['local_rows']} | {row['non_local_rows']} |"
+        )
+    return "\n".join(lines)
+
+
+def _configured_semantic_profile_findings(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return "- No profile findings available."
+    lines: list[str] = []
+    for row in rows:
+        head = f"- {row['name']}: local semantic rows={row['local_rows']}, non-local rows={row['non_local_rows']}"
+        lines.append(head)
+        if row.get("top_local"):
+            top_local = row["top_local"]
+            lines.append(
+                f"  top grouped hit: {top_local.get('file', 'n/a')} -> {top_local.get('top_symbol', 'n/a')}"
+            )
+        if row.get("top_semantic"):
+            top_semantic = row["top_semantic"]
+            lines.append(
+                f"  top ranked hit: {top_semantic.get('qn', 'n/a')} ({top_semantic.get('file', 'n/a')})"
+            )
+    return "\n".join(lines)
+
+
+def _scope_qn_prefix(summary: dict[str, Any], scope_path: str) -> str:
+    scope = summary.get("scope", {})
+    return scope.get("scope_qn_prefix") or scope_path.replace("/", ".")
+
+
+def _scope_filter(alias: str, scope_prefix: str) -> str:
+    return f"coalesce({alias}.qn, {alias}.name) CONTAINS '{scope_prefix}'"
+
+
+def _parse_relation_rows(text: str) -> list[tuple[str, str, str]]:
+    rows: list[tuple[str, str, str]] = []
+    pattern = re.compile(r"^(?P<source>.+?)\s+(?P<relation>[A-Z_]+)\s+(?P<target>.+)$")
+    for line in text.splitlines():
+        stripped = line.strip()
+        if (
+            not stripped
+            or stripped.startswith("rows:")
+            or stripped.startswith("total:")
+            or stripped.startswith("hint:")
+        ):
+            continue
+        match = pattern.match(stripped)
+        if not match:
+            continue
+        rows.append(
+            (
+                match.group("source").strip(),
+                match.group("relation").strip(),
+                match.group("target").strip(),
+            )
+        )
+    return rows
+
+
+def _normalize_scoped_name(raw: str, scope_prefix: str) -> str:
+    text = str(raw).strip()
+    index = text.find(scope_prefix)
+    if index >= 0:
+        return text[index:]
+    return text
+
+
 def _semantic_profile_payload(
     semantic_doc: dict[str, Any], scope_path: str
 ) -> dict[str, Any]:
@@ -224,24 +359,7 @@ def _semantic_profile_payload(
 
 
 def _structural_profile_payload(structured_text: str) -> dict[str, Any]:
-    rows: list[tuple[str, str, str]] = []
-    for line in structured_text.splitlines():
-        stripped = line.strip()
-        if (
-            not stripped
-            or stripped.startswith("rows:")
-            or stripped.startswith("total:")
-        ):
-            continue
-        if " CALLS " in stripped:
-            source, target = stripped.split(" CALLS ", 1)
-            rows.append((source, "CALLS", target))
-        elif " IMPORTS " in stripped:
-            source, target = stripped.split(" IMPORTS ", 1)
-            rows.append((source, "IMPORTS", target))
-        elif " INHERITS " in stripped:
-            source, target = stripped.split(" INHERITS ", 1)
-            rows.append((source, "INHERITS", target))
+    rows = _parse_relation_rows(structured_text)
     return {
         "rows": rows,
         "row_count": len(rows),
@@ -300,7 +418,7 @@ def _scoped_dependency_edges(
 ) -> dict[str, Any]:
     query = (
         "MATCH (s:Function)-[r:CALLS]->(t) "
-        f"WHERE s.qn CONTAINS '{scope_prefix}' "
+        f"WHERE {_scope_filter('s', scope_prefix)} "
         "RETURN s.qn AS source, type(r) AS relation, "
         "coalesce(t.qn, t.name) AS target"
     )
@@ -308,6 +426,59 @@ def _scoped_dependency_edges(
         cbm_binary,
         "query_graph",
         {"project": project_name, "query": query, "max_rows": 30},
+        cwd=project_root,
+    )
+
+
+def _scoped_module_dependency_edges(
+    *, project_root: Path, project_name: str, scope_prefix: str, cbm_binary: Path
+) -> dict[str, Any]:
+    query = (
+        "MATCH (s:Module)-[r:IMPORTS]->(t:Module) "
+        f"WHERE {_scope_filter('s', scope_prefix)} "
+        f"AND {_scope_filter('t', scope_prefix)} "
+        "RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, "
+        "coalesce(t.qn, t.name) AS target"
+    )
+    return run_cbm_tool(
+        cbm_binary,
+        "query_graph",
+        {"project": project_name, "query": query, "max_rows": 80},
+        cwd=project_root,
+    )
+
+
+def _scoped_class_method_edges(
+    *, project_root: Path, project_name: str, scope_prefix: str, cbm_binary: Path
+) -> dict[str, Any]:
+    query = (
+        "MATCH (s:Class)-[r:DEFINES_METHOD]->(t:Method) "
+        f"WHERE {_scope_filter('s', scope_prefix)} "
+        "RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, "
+        "coalesce(t.qn, t.name) AS target"
+    )
+    return run_cbm_tool(
+        cbm_binary,
+        "query_graph",
+        {"project": project_name, "query": query, "max_rows": 80},
+        cwd=project_root,
+    )
+
+
+def _scoped_class_inheritance_edges(
+    *, project_root: Path, project_name: str, scope_prefix: str, cbm_binary: Path
+) -> dict[str, Any]:
+    query = (
+        "MATCH (s:Class)-[r:INHERITS]->(t:Class) "
+        f"WHERE {_scope_filter('s', scope_prefix)} "
+        f"AND {_scope_filter('t', scope_prefix)} "
+        "RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, "
+        "coalesce(t.qn, t.name) AS target"
+    )
+    return run_cbm_tool(
+        cbm_binary,
+        "query_graph",
+        {"project": project_name, "query": query, "max_rows": 40},
         cwd=project_root,
     )
 
@@ -335,25 +506,7 @@ def _scoped_semantic_search(
 
 
 def _dependency_rows_from_text(text: str) -> list[tuple[str, str, str]]:
-    rows: list[tuple[str, str, str]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if (
-            not stripped
-            or stripped.startswith("rows:")
-            or stripped.startswith("total:")
-        ):
-            continue
-        if " CALLS " in stripped:
-            source, target = stripped.split(" CALLS ", 1)
-            rows.append((source, "CALLS", target))
-        elif " IMPORTS " in stripped:
-            source, target = stripped.split(" IMPORTS ", 1)
-            rows.append((source, "IMPORTS", target))
-        elif " INHERITS " in stripped:
-            source, target = stripped.split(" INHERITS ", 1)
-            rows.append((source, "INHERITS", target))
-    return rows
+    return _parse_relation_rows(text)
 
 
 def _short_name(qualified_name: str) -> str:
@@ -372,10 +525,14 @@ def _module_name_for_file(file_path: str | Path, *, package_root: Path | None = 
     return ".".join(path.with_suffix("").parts)
 
 
-def _fallback_dependency_rows(package_root: Path) -> list[tuple[str, str, str]]:
+def _fallback_dependency_rows(
+    package_root: Path, package_prefix: str | None = None
+) -> list[tuple[str, str, str]]:
     rows: list[tuple[str, str, str]] = []
     if not package_root.exists():
         return rows
+
+    effective_prefix = package_prefix or package_root.name
 
     for path in sorted(package_root.rglob("*.py")):
         if path.name == "__init__.py":
@@ -390,11 +547,11 @@ def _fallback_dependency_rows(package_root: Path) -> list[tuple[str, str, str]]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name.startswith("refactor_cli"):
+                    if alias.name.startswith(effective_prefix):
                         rows.append((source, "IMPORTS", alias.name))
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                if module.startswith("refactor_cli"):
+                if module.startswith(effective_prefix):
                     rows.append((source, "IMPORTS", module))
                 elif node.level > 0 and module:
                     package_prefix = ".".join(source.split(".")[:-1])
@@ -425,9 +582,7 @@ def _search_hit_dependency_rows(
     previous_symbol: str | None = None
     for group in local_groups[:8]:
         file_path = str(group.get("file", ""))
-        module_name = _module_name_for_file(
-            file_path, package_root=Path("/workspace/refactor_cli")
-        )
+        module_name = _module_name_for_file(file_path)
         row_items = group.get("rows", [])
         if not row_items:
             continue
@@ -494,6 +649,81 @@ def _mermaid_scoped_edges(dep_rows: list[tuple[str, str, str]]) -> str:
         )
     lines.append("```")
     return "\n".join(lines)
+
+
+def _relation_counters(
+    rows: list[tuple[str, str, str]], scope_prefix: str
+) -> dict[str, Any]:
+    normalized = [
+        (
+            _normalize_scoped_name(source, scope_prefix),
+            relation,
+            _normalize_scoped_name(target, scope_prefix),
+        )
+        for source, relation, target in rows
+    ]
+    deduped: list[tuple[str, str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in normalized:
+        if row not in seen:
+            seen.add(row)
+            deduped.append(row)
+
+    fan_out = Counter(source for source, _, _ in deduped)
+    fan_in = Counter(target for _, _, target in deduped)
+    targets_by_source: dict[str, set[str]] = defaultdict(set)
+    sources_by_target: dict[str, set[str]] = defaultdict(set)
+    for source, _relation, target in deduped:
+        targets_by_source[source].add(target)
+        sources_by_target[target].add(source)
+
+    return {
+        "rows": deduped,
+        "fan_out": fan_out,
+        "fan_in": fan_in,
+        "targets_by_source": targets_by_source,
+        "sources_by_target": sources_by_target,
+    }
+
+
+def _top_counter_lines(counter: Counter[str], *, limit: int = 6) -> list[str]:
+    return [f"{name} ({count})" for name, count in counter.most_common(limit)]
+
+
+def _entry_point_lines(scoped_arch_text: str, *, limit: int = 8) -> list[str]:
+    entries = _parse_section_lines(scoped_arch_text, "entry_points")
+    return entries[:limit]
+
+
+def _class_surface_lines(class_rows: list[tuple[str, str, str]]) -> list[str]:
+    counts = Counter(source for source, _, _ in class_rows)
+    lines: list[str] = []
+    for class_name, count in counts.most_common(6):
+        lines.append(f"{class_name} defines {count} methods")
+    return lines
+
+
+def _optional_demo_artifacts_section(
+    *,
+    include_demo_artifacts: bool,
+    scope_path: str,
+    representative_report: str,
+    search_hit_rows: list[tuple[str, str, str]],
+) -> str:
+    if not include_demo_artifacts:
+        return ""
+
+    section = [
+        "## Optional Demo Artifacts",
+        "",
+        "These sections are example-driven discovery aids. They are useful for tool evaluation, but they are not part of the default architecture report because they read like demos rather than project findings.",
+    ]
+    if representative_report:
+        section.extend(["", "### Representative semantic searches", "", representative_report])
+    search_block = _search_hit_dependency_block(search_hit_rows, scope_path)
+    if search_block:
+        section.extend(["", search_block.strip()])
+    return "\n".join(section) + "\n"
 
 
 def _mermaid_structural_hits(rows: list[tuple[str, str, str]]) -> str:
@@ -643,6 +873,8 @@ def build_candidate_report(
     scope_path: str,
     project_root: Path | None = None,
     cbm_binary_path: str | None = None,
+    include_demo_artifacts: bool = False,
+    semantic_query_profiles: list[dict[str, Any]] | None = None,
 ) -> str:
     summary = load_json(input_dir / "summary.json")
     source_index = load_json(input_dir / "source_index.json")
@@ -657,6 +889,7 @@ def build_candidate_report(
     project_root = project_root or Path(summary["project_root"])
     cbm_binary = resolve_cbm_binary(cbm_binary_path)
     project_name = summary["project_name"]
+    scope_prefix = _scope_qn_prefix(summary, scope_path)
     structured_index = (
         source_index.get("index", {}).get("payload", {}).get("structuredContent", {})
     )
@@ -676,19 +909,51 @@ def build_candidate_report(
     scoped_dep = _scoped_dependency_edges(
         project_root=project_root,
         project_name=project_name,
-        scope_prefix="refactor_cli.src.refactor_cli",
+        scope_prefix=scope_prefix,
         cbm_binary=cbm_binary,
     )
     scoped_dep_text = _extract_text_content(scoped_dep.get("payload", {}))
     scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
+    module_dep_doc = _scoped_module_dependency_edges(
+        project_root=project_root,
+        project_name=project_name,
+        scope_prefix=scope_prefix,
+        cbm_binary=cbm_binary,
+    )
+    module_dep_rows = _dependency_rows_from_text(
+        _extract_text_content(module_dep_doc.get("payload", {}))
+    )
+    module_dep_source = "CBM IMPORTS query"
+    if not module_dep_rows:
+        module_dep_rows = _fallback_dependency_rows(
+            project_root / scope_path, package_prefix=scope_prefix
+        )
+        module_dep_source = "local AST import fallback"
+
     if not scoped_dep_rows:
-        scoped_dep_rows = _fallback_dependency_rows(project_root / scope_path)
-    if not scoped_dep_rows:
-        scoped_dep_rows = _search_hit_dependency_rows(semantic, scope_path)
+        scoped_dep_rows = module_dep_rows
     coherent_edges, suspicious_edges = _example_edge_lines(scoped_dep_rows)
     search_hit_rows = _search_hit_dependency_rows(semantic, scope_path)
 
-    semantic_profiles = _semantic_query_profiles(scope_path)
+    class_method_doc = _scoped_class_method_edges(
+        project_root=project_root,
+        project_name=project_name,
+        scope_prefix=scope_prefix,
+        cbm_binary=cbm_binary,
+    )
+    class_method_rows = _dependency_rows_from_text(
+        _extract_text_content(class_method_doc.get("payload", {}))
+    )
+    class_inheritance_doc = _scoped_class_inheritance_edges(
+        project_root=project_root,
+        project_name=project_name,
+        scope_prefix=scope_prefix,
+        cbm_binary=cbm_binary,
+    )
+    class_inheritance_rows = _dependency_rows_from_text(
+        _extract_text_content(class_inheritance_doc.get("payload", {}))
+    )
+
     scoped_semantic = _scoped_semantic_search(
         project_root=project_root,
         project_name=project_name,
@@ -697,39 +962,49 @@ def build_candidate_report(
         semantic_terms=semantic["semantic_terms"],
     )
     representative_searches: list[dict[str, Any]] = []
-    for profile in semantic_profiles:
-        profile_result = _scoped_semantic_search(
-            project_root=project_root,
-            project_name=project_name,
-            scope_path=profile["scope"],
-            cbm_binary=cbm_binary,
-            semantic_terms=[
-                token.strip() for token in profile["query"].split() if token.strip()
-            ],
-        )
-        structural_result = run_cbm_tool(
-            cbm_binary,
-            "search_graph",
-            {
-                "project": project_name,
-                "name_pattern": profile["structural_pattern"],
-                "label": "Function",
-                "limit": 20,
-                "format": "json",
-            },
-            cwd=project_root,
-        )
-        representative_searches.append(
-            {
-                "question": profile["name"],
-                "query": profile["query"],
-                "why": profile["why"],
-                "result": _semantic_profile_payload(profile_result, scope_path),
-                "raw_result": profile_result,
-                "structural_pattern": profile["structural_pattern"],
-                "structural_result": _structural_search_payload(structural_result),
-            }
-        )
+    configured_profiles = semantic_query_profiles or []
+    configured_profile_runs = _configured_semantic_profiles_summary(
+        project_root=project_root,
+        project_name=project_name,
+        cbm_binary=cbm_binary,
+        scope_path=scope_path,
+        profiles=configured_profiles,
+    )
+    if include_demo_artifacts:
+        semantic_profiles = _semantic_query_profiles(scope_path)
+        for profile in semantic_profiles:
+            profile_result = _scoped_semantic_search(
+                project_root=project_root,
+                project_name=project_name,
+                scope_path=profile["scope"],
+                cbm_binary=cbm_binary,
+                semantic_terms=[
+                    token.strip() for token in profile["query"].split() if token.strip()
+                ],
+            )
+            structural_result = run_cbm_tool(
+                cbm_binary,
+                "search_graph",
+                {
+                    "project": project_name,
+                    "name_pattern": profile["structural_pattern"],
+                    "label": "Function",
+                    "limit": 20,
+                    "format": "json",
+                },
+                cwd=project_root,
+            )
+            representative_searches.append(
+                {
+                    "question": profile["name"],
+                    "query": profile["query"],
+                    "why": profile["why"],
+                    "result": _semantic_profile_payload(profile_result, scope_path),
+                    "raw_result": profile_result,
+                    "structural_pattern": profile["structural_pattern"],
+                    "structural_result": _structural_search_payload(structural_result),
+                }
+            )
 
     full_arch_text = _architecture_text(architecture)
     full_languages = _parse_section_counts(full_arch_text, "languages")
@@ -737,6 +1012,9 @@ def build_candidate_report(
     local_groups = _top_local_groups(scoped_semantic, scope_path)
     local_semantic_stats = _semantic_group_summary(scoped_semantic, scope_path)
     semantic_noise = _semantic_noise_summary(semantic, scope_path)
+    module_summary = _relation_counters(module_dep_rows, scope_prefix)
+    function_summary = _relation_counters(scoped_dep_rows, scope_prefix)
+    class_summary = _relation_counters(class_method_rows, scope_prefix)
     input_rows = _candidate_input_rows(
         source_index=source_index,
         dependency_doc=load_json(input_dir / "dependency_graph.json"),
@@ -827,6 +1105,37 @@ def build_candidate_report(
         )
         representative_sections.append("\n".join(section_lines))
     representative_report = "\n\n".join(representative_sections)
+    entry_point_lines = _line_list(
+        _entry_point_lines(scoped_arch_text),
+        "No entry points discovered.",
+    )
+    module_fan_out_lines = _line_list(
+        _top_counter_lines(module_summary["fan_out"]),
+        "No module import edges recovered.",
+    )
+    module_fan_in_lines = _line_list(
+        _top_counter_lines(module_summary["fan_in"]),
+        "No inbound module import edges recovered.",
+    )
+    function_fan_out_lines = _line_list(
+        _top_counter_lines(function_summary["fan_out"]),
+        "No function call edges recovered.",
+    )
+    function_fan_in_lines = _line_list(
+        _top_counter_lines(function_summary["fan_in"]),
+        "No called-function targets recovered.",
+    )
+    class_surface = _line_list(
+        _class_surface_lines(class_summary["rows"]),
+        "No class/method surface recovered from the scoped graph.",
+    )
+    inheritance_lines = _line_list(
+        [
+            f"{_normalize_scoped_name(source, scope_prefix)} INHERITS {_normalize_scoped_name(target, scope_prefix)}"
+            for source, _relation, target in class_inheritance_rows[:6]
+        ],
+        "No class inheritance edges recovered.",
+    )
 
     hotspot_lines = (
         "\n".join(f"- {line}" for line in scoped_hotspots[:8]) or "- No hotspots found."
@@ -849,6 +1158,13 @@ def build_candidate_report(
             f"CodeRAG status: `{_status_label(coderag.get('ok'))}`. "
             f"Reason: {coderag.get('reason', 'n/a')}."
         )
+
+    demo_artifacts = _optional_demo_artifacts_section(
+        include_demo_artifacts=include_demo_artifacts,
+        scope_path=scope_path,
+        representative_report=representative_report,
+        search_hit_rows=search_hit_rows,
+    )
 
     report = f"""# Candidate Analysis Report
 
@@ -909,7 +1225,7 @@ Policy note:
 
 Observation:
 - The index succeeded and is large enough for meaningful graph analysis.
-- The corpus includes `.eval/candidates`, so raw full-project results are noisier than the actual `src/refactor_cli` package.
+- The corpus may include auxiliary folders beyond `{scope_path}`, so raw full-project results are noisier than the scoped package.
 
 ## Full-Corpus Architecture Snapshot
 
@@ -933,15 +1249,41 @@ Hotspots:
 Clusters:
 {cluster_lines}
 
+Entry points:
+{entry_point_lines}
+
 Observation:
 - The real package is a compact Python CLI package.
 - The central coordination points are discovery/config/file-writing helpers and the candidate integration runner.
 
-## Scoped Dependency View
+## Scoped Module Dependencies
 
-The current stored `dependency_graph.json` is raw and broad. For clarity, this report derives a scoped dependency sample for `{scope_path}` from the actual local Python imports when the graph query is empty.
+- Data source: {module_dep_source}
+- Unique module import edges: {len(module_summary['rows'])}
 
-{_mermaid_scoped_edges(scoped_dep_rows)}
+{_mermaid_scoped_edges(module_summary['rows'])}
+
+Highest fan-out modules:
+{module_fan_out_lines}
+
+Highest fan-in modules:
+{module_fan_in_lines}
+
+Observation:
+- Module-level imports show how the package is stitched together structurally.
+- This is the most stable dependency view when function-call extraction is sparse or noisy.
+
+## Scoped Function Dependencies
+
+The current stored `dependency_graph.json` is raw and broad. For clarity, this report derives a scoped function-call view from direct CBM graph queries and falls back to local structure only when necessary.
+
+{_mermaid_scoped_edges(function_summary['rows'])}
+
+Highest fan-out functions:
+{function_fan_out_lines}
+
+Highest fan-in targets:
+{function_fan_in_lines}
 
 Coherent local edge examples:
 {coherent_edge_lines}
@@ -950,15 +1292,32 @@ Suspicious edge examples:
 {suspicious_edge_lines}
 
 Observation:
-- The graph does recover real local structure, for example file-writing and candidate runner relationships.
-- When the indexed graph is empty, the report falls back to a local AST import graph so the dependency section still shows the package structure.
-- It also produces suspicious cross-corpus edges into `.eval` repositories, which means raw dependency output should not be trusted without scoping or filtering.
+- The graph can recover useful function-level coordination points when the qualified-name scope is set correctly.
+- Function-call edges are good for hotspot inspection, but module imports remain the more stable architectural signal.
+- Suspicious cross-corpus edges should still be treated as a scoping or indexing problem, not as trustworthy architecture data.
 
-{_search_hit_dependency_block(search_hit_rows, scope_path)}
+## Scoped Class / Model Surface
+
+This section uses the class and method nodes exposed by codebase-memory. In Python repositories this is usually the closest available proxy for model-level structure.
+
+- Class-to-method edges recovered: {len(class_summary['rows'])}
+- Inheritance edges recovered: {len(class_inheritance_rows)}
+
+{_mermaid_scoped_edges(class_summary['rows'])}
+
+Classes with the largest method surfaces:
+{class_surface}
+
+Inheritance examples:
+{inheritance_lines}
+
+Observation:
+- This section is only as rich as the repository's class usage. Function-heavy scripts will naturally produce a sparse model view.
+- For dataclass-heavy or OO-heavy projects, this becomes the best high-level view of model boundaries and behavior ownership.
 
 ## Semantic Retrieval Interpretation
 
-The stored artifact is evaluated as-is, but the local grouped examples below come from three live re-queries built from repo-specific questions.
+The stored artifact is evaluated as-is, without generating extra example queries unless explicitly requested.
 
 What the output looks like:
 - `groups`: files with local matches, each row showing `name`, `label`, `lines`, `in`, `out`
@@ -970,9 +1329,12 @@ How semantic is it?
 - In this repo, that means the signal is partially semantic and partially structural.
 - The score is most useful as a prioritization hint after you already know the package scope.
 
-Representative searches and findings:
+Configured semantic query intents:
 
-{representative_report}
+{_configured_semantic_profiles_table(configured_profile_runs)}
+
+Configured query findings:
+{_configured_semantic_profile_findings(configured_profile_runs)}
 
 Evaluation scorecard for the baseline scoped search:
 - local grouped files: {local_semantic_stats["local_groups"]}
@@ -1000,13 +1362,15 @@ What this means in practice:
 How to use it here:
 {_line_list(_semantic_usage_guidance(scope_path), "No guidance available.")}
 
+{demo_artifacts}
+
 ## Practical Conclusions
 
 - The outputs have merit, but only after scoping and summarization.
-- `architecture_report.json` is the strongest artifact for human understanding.
-- `dependency_graph.json` and `semantic_retrieval.json` should be treated as machine-oriented raw data unless filtered to the target package.
-- The next improvement should be default scoped output for `candidate-phase-a` so the generated artifacts are human-usable by default.
-- The report should be used to decide which candidate behaviors are actually production-worthy, not just technically runnable.
+- `architecture_report.json` plus the scoped module/function/class sections above are the strongest combination for human understanding.
+- `dependency_graph.json` and `semantic_retrieval.json` should still be treated as machine-oriented raw data unless filtered to the target package.
+- Demo-style semantic examples are best kept opt-in, because they evaluate tooling behavior rather than describing the target architecture.
+- The report should focus on engineering insight first: entrypoints, hotspots, module imports, function coordination points, and class/model surface.
 
 ## Optional Provider Note
 

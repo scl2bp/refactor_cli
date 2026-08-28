@@ -93,6 +93,9 @@ Available commands:
 - `candidate-phase-a`
 - `candidate-report`
 
+`candidate-report` now defaults to an architecture-first summary. Demo-style semantic
+example sections are omitted unless `--include-demo-artifacts` is passed.
+
 ## Quick Start
 
 ### 1. Initialize project metadata
@@ -115,9 +118,53 @@ Example config:
   "python_files": {
     "include": ["main.py", "src/**/*.py", "tests/**/*.py", "tools/**/*.py"],
     "exclude": [".venv/**", "**/__pycache__/**", "build/**", "dist/**"]
+  },
+  "candidate_analysis": {
+    "project_name": null,
+    "cbm_binary": null,
+    "index_mode": "moderate",
+    "max_rows": 5000,
+    "semantic_terms": ["dependency", "module", "call graph"],
+    "semantic_limit": 100,
+    "scope_path": "src/app",
+    "scope_qn_prefix": "app",
+    "exclude_qn_substrings": [".eval."],
+    "include_coderag_validate": false,
+    "coderag_path": ".eval/candidates/coderag",
+    "output_dir": ".refactor/analysis/candidates",
+    "report_output": ".refactor/analysis/candidates/report.md",
+    "include_demo_artifacts": false,
+    "semantic_query_profiles": [
+      {
+        "name": "Input processing",
+        "query": "config parse validation",
+        "why": "Locate where inputs are loaded and normalized",
+        "scope_path": "src/app"
+      },
+      {
+        "name": "Calculation",
+        "query": "algorithm compute simulation",
+        "why": "Locate core processing paths",
+        "scope_path": "src/app"
+      },
+      {
+        "name": "Reporting",
+        "query": "report export dashboard",
+        "why": "Locate user-facing output generation",
+        "scope_path": "src/app"
+      }
+    ]
   }
 }
 ```
+
+The `candidate_analysis` section is optional, but once present it becomes the default
+source for `candidate-phase-a` and `candidate-report`. CLI flags override config only
+when explicitly passed.
+
+`semantic_query_profiles` lets each project define domain-relevant semantic intents.
+These profiles are summarized in the default report, while detailed demo-style query
+walkthroughs remain opt-in via `--include-demo-artifacts`.
 
 ### 3. Generate the structural tree
 
@@ -232,9 +279,13 @@ refactor-cli tree --print
 refactor-cli format
 refactor-cli apply-tree-edit
 refactor-cli apply-tree-patch
-refactor-cli candidate-phase-a --project-root /path/to/target/repo
+refactor-cli candidate-phase-a
 refactor-cli candidate-report
+refactor-cli candidate-report --include-demo-artifacts
 ```
+
+If `.refactor/config.json` contains `candidate_analysis` defaults, those two commands
+can usually run without additional parameters from the target repository root.
 
 ## Candidate-Based Phase A Modules
 
