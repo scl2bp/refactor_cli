@@ -26,25 +26,8 @@ files:
   - FunctionDef _parse_cbm_options
   - FunctionDef _profile_terms_setting
   - FunctionDef _resolve_candidate_search_settings
-  - FunctionDef split_nodes_by_symbol
-  - FunctionDef build_target_module
-  - FunctionDef build_updated_source
   - FunctionDef choose_operation
   - FunctionDef extract_paths_from_tree_patch
-  - FunctionDef apply_unified_diff_to_text
-  - FunctionDef build_symbol_index
-  - FunctionDef tree_entry_map
-  - FunctionDef choose_move_from_trees
-  - FunctionDef build_operation_from_tree_delta
-  - FunctionDef apply_operation_to_tree_doc
-  - FunctionDef verify_moved_symbols
-  - FunctionDef tree_docs_differ
-  - FunctionDef build_after_tree_from_edit
-  - FunctionDef run_tree_transition
-  - FunctionDef detect_file_deletions_from_trees
-  - FunctionDef apply_extract_top_level_symbols
-  - FunctionDef _strip_self_imports
-  - FunctionDef apply_extract_top_level_symbols_emend
   - FunctionDef cmd_init
   - FunctionDef cmd_files
   - FunctionDef cmd_tree
@@ -159,6 +142,24 @@ files:
   - FunctionDef _project_name_from_root
   - FunctionDef run_source_index
   - FunctionDef run_coderag_validate_only
+  src/refactor_cli/transforms.py:
+  - FunctionDef split_nodes_by_symbol
+  - FunctionDef build_target_module
+  - FunctionDef build_updated_source
+  - FunctionDef apply_unified_diff_to_text
+  - FunctionDef build_symbol_index
+  - FunctionDef tree_entry_map
+  - FunctionDef choose_move_from_trees
+  - FunctionDef build_operation_from_tree_delta
+  - FunctionDef apply_operation_to_tree_doc
+  - FunctionDef verify_moved_symbols
+  - FunctionDef tree_docs_differ
+  - FunctionDef build_after_tree_from_edit
+  - FunctionDef detect_file_deletions_from_trees
+  - FunctionDef apply_extract_top_level_symbols
+  - FunctionDef _strip_self_imports
+  - FunctionDef apply_extract_top_level_symbols_emend
+  - FunctionDef run_tree_transition
   src/refactor_cli/tree_codec.py:
   - FunctionDef _node_to_compact
   - FunctionDef _compact_to_node
