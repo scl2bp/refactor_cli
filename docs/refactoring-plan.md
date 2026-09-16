@@ -276,6 +276,16 @@ disagreements or authorize moves.
 and scope-crossing relationships before any candidate is marked reviewable for
 automation.
 
+### Cross-validation result
+
+The first isolated comparison normalizes CBM symbol-level `IMPORTS` rows to module
+edges and compares them with the AST baseline. The current run matched 39 of 40 AST
+internal import edges, found 39 CBM module edges, and found no extra CBM edges. The
+single missing edge remains visible in the candidate report and keeps the overall
+decision below automation-ready. This is evidence that the two analyzers are close
+but not interchangeable; disagreement must be explained per edge before an
+automated move can rely on the relationship graph.
+
 ### Chapter 1: Configured file discovery
 
 **Feature description:** `files` resolves the project root and applies the include

@@ -10,6 +10,7 @@ from refactor_cli.__init__ import (
 from refactor_cli.candidate_report import (
     _fallback_dependency_rows,
     _optional_demo_artifacts_section,
+    _compare_ast_cbm_imports,
     _parse_relation_rows,
     _mermaid_structural_hits,
     _search_hit_dependency_block,
@@ -19,6 +20,31 @@ from refactor_cli.candidate_report import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_DIR = REPO_ROOT / "src" / "refactor_cli"
+
+
+def test_ast_cbm_import_comparison_normalizes_symbol_qualified_rows():
+    baseline = {
+        "modules": [
+            {"module": "demo_pkg", "file": "src/demo_pkg/__init__.py"},
+            {"module": "demo_pkg.api", "file": "src/demo_pkg/api.py"},
+        ],
+        "internal_import_edges": [
+            {"source": "demo_pkg", "target": "demo_pkg.api"},
+        ],
+    }
+    rows = [
+        (
+            "demo.src.demo_pkg.__init__.py.__file__",
+            "IMPORTS",
+            "demo.src.demo_pkg.api.run",
+        )
+    ]
+
+    result = _compare_ast_cbm_imports(baseline, rows, "demo.src.demo_pkg")
+
+    assert result["matched_edges"] == 1
+    assert result["missing_from_cbm"] == []
+    assert result["extra_in_cbm"] == []
 
 
 def test_fallback_dependency_rows_are_non_empty_for_package():

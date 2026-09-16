@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T17:51:01
+Generated: 2026-09-16T18:04:39
 
 Project: `refactor_cli`
 
@@ -24,6 +24,7 @@ Partial parses: **0**<br>
 Files not indexed: **0**<br>
 Out-of-scope dependency rows discarded: **18**<br>
 Semantic rows: raw **100**, local **93**, non-local **7**, discarded **0**
+AST/CBM imports: **39** matched of AST **40** and CBM **39**
 
 Main issue: Some relationships leave the configured corpus; they are treated as external dependencies and are excluded from internal refactoring evidence.
 
@@ -42,6 +43,7 @@ Next action: Inspect the external dependency list and expand configuration only 
 flowchart LR
   scope_baseline["scope_baseline: OK"]
   source_index["source_index: OK"]
+  ast_cbm_imports["ast_cbm_imports: DEGRADED"]
   dependency_graph["dependency_graph: DEGRADED"]
   semantic_retrieval["semantic_retrieval: DEGRADED"]
   architecture_report["architecture_report: OK"]
@@ -116,6 +118,7 @@ Example:
 |---|---|
 | Indexing and project registration | OK |
 | Scoped architecture extraction | OK |
+| AST/CBM module import agreement | DEGRADED |
 | Scoped dependency extraction | DEGRADED |
 | Scoped semantic retrieval signal | DEGRADED |
 | CodeRAG validation | SKIP |
@@ -124,6 +127,20 @@ Example:
 Policy note:
 - Persistent daemon mode is intentionally not part of this project's operating model.
 - Current scope policy: file scope `src/refactor_cli`, qn scope `refactor_cli.src.refactor_cli`, excluded qn substrings `['.eval.']`.
+
+## AST / CBM Agreement
+
+- Matched internal module imports: 39
+- AST internal import edges: 40
+- CBM internal import edges: 39
+- Missing from CBM: 1
+- Extra in CBM: 0
+
+Differences:
+- Missing from CBM: `refactor_cli` -> `refactor_cli.cli.parser`
+
+An agreement status of `DEGRADED` blocks automated refactoring until each difference
+is explained as an AST limitation, provider limitation, or configured-scope issue.
 
 Examples:
 - `LOW_SIGNAL` means the semantic query should be narrowed or rewritten.

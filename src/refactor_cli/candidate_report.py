@@ -118,6 +118,49 @@ def _filter_relation_rows(
     return local, discarded
 
 
+def _cbm_module_name(raw: str, scope_prefix: str, known_modules: set[str]) -> str | None:
+    text = str(raw).strip()
+    if not text.startswith(scope_prefix):
+        return None
+    suffix = text[len(scope_prefix) :].lstrip(".")
+    if suffix.startswith("__init__.py"):
+        candidate = scope_prefix.rsplit(".", 1)[-1]
+    else:
+        module_part = suffix.split(".py", 1)[0]
+        candidate = f"{scope_prefix.rsplit('.', 1)[-1]}.{module_part}"
+    matches = [module for module in known_modules if candidate == module or candidate.startswith(f"{module}.")]
+    return max(matches, key=len) if matches else None
+
+
+def _compare_ast_cbm_imports(
+    baseline: dict[str, Any],
+    cbm_rows: list[tuple[str, str, str]],
+    scope_prefix: str,
+) -> dict[str, Any]:
+    ast_edges = {
+        (row["source"], row["target"])
+        for row in baseline.get("internal_import_edges", [])
+    }
+    known_modules = {
+        row["module"] for row in baseline.get("modules", [])
+    }
+    cbm_edges: set[tuple[str, str]] = set()
+    for source, relation, target in cbm_rows:
+        if relation != "IMPORTS":
+            continue
+        source_module = _cbm_module_name(source, scope_prefix, known_modules)
+        target_module = _cbm_module_name(target, scope_prefix, known_modules)
+        if source_module and target_module and source_module != target_module:
+            cbm_edges.add((source_module, target_module))
+    return {
+        "ast_edges": len(ast_edges),
+        "cbm_edges": len(cbm_edges),
+        "matched_edges": len(ast_edges & cbm_edges),
+        "missing_from_cbm": sorted(ast_edges - cbm_edges),
+        "extra_in_cbm": sorted(cbm_edges - ast_edges),
+    }
+
+
 def _artifact_size_rows(input_dir: Path) -> list[tuple[str, int]]:
     rows: list[tuple[str, int]] = []
     for name in sorted(input_dir.glob("*.json")):
@@ -995,6 +1038,7 @@ def build_candidate_report(
     )
     architecture = load_json(input_dir / "architecture_report.json")
     semantic = load_json(input_dir / "semantic_retrieval.json")
+    dependency_doc = load_json(input_dir / "dependency_graph.json")
     coderag = (
         load_json(input_dir / "coderag_validate.json")
         if (input_dir / "coderag_validate.json").exists()
@@ -1030,6 +1074,14 @@ def build_candidate_report(
     )
     scoped_dep_text = _extract_text_content(scoped_dep.get("payload", {}))
     raw_scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
+    stored_dependency_rows = _dependency_rows_from_text(
+        _extract_text_content(dependency_doc.get("result", {}).get("payload", {}))
+    )
+    import_comparison = _compare_ast_cbm_imports(
+        scope_baseline,
+        stored_dependency_rows,
+        scope_prefix,
+    )
     scoped_dep_rows, discarded_dependency_rows = _filter_relation_rows(
         raw_scoped_dep_rows,
         scope_prefix,
@@ -1175,12 +1227,18 @@ def build_candidate_report(
         discarded=semantic_noise["non_local"] > 0 or semantic_noise["discarded"] > 0,
         usable=semantic_noise["local"] > 0,
     )
+    comparison_status = (
+        "OK"
+        if not import_comparison["missing_from_cbm"]
+        and not import_comparison["extra_in_cbm"]
+        else "DEGRADED"
+    )
     module_summary = _relation_counters(module_dep_rows, scope_prefix)
     function_summary = _relation_counters(scoped_dep_rows, scope_prefix)
     class_summary = _relation_counters(class_method_rows, scope_prefix)
     input_rows = _candidate_input_rows(
         source_index=source_index,
-        dependency_doc=load_json(input_dir / "dependency_graph.json"),
+        dependency_doc=dependency_doc,
         semantic_doc=semantic,
         architecture_doc=architecture,
         scope_path=scope_path,
@@ -1190,6 +1248,7 @@ def build_candidate_report(
     readiness_items = [
         ("Indexing and project registration", index_status),
         ("Scoped architecture extraction", "OK" if scoped_arch_text else "FAIL"),
+        ("AST/CBM module import agreement", comparison_status),
         (
             "Scoped dependency extraction",
             dependency_status,
@@ -1231,6 +1290,7 @@ def build_candidate_report(
         if baseline_counts.get("parse_errors", 0)
         else "OK",
         "source_index": index_status,
+        "ast_cbm_imports": comparison_status,
         "dependency_graph": dependency_status,
         "semantic_retrieval": semantic_status,
         "architecture_report": "OK" if scoped_arch_text else "FAIL",
@@ -1238,6 +1298,12 @@ def build_candidate_report(
         if coderag is not None
         else "SKIP",
     }
+    import_difference_lines = []
+    for source, target in import_comparison["missing_from_cbm"][:8]:
+        import_difference_lines.append(f"- Missing from CBM: `{source}` -> `{target}`")
+    for source, target in import_comparison["extra_in_cbm"][:8]:
+        import_difference_lines.append(f"- Extra in CBM: `{source}` -> `{target}`")
+    import_difference_text = "\n".join(import_difference_lines) or "- None"
     status_lines = "\n".join(
         f"| {name} | {status_by_module.get(name, _status_label(value))} |"
         for name, value in modules.items()
@@ -1385,6 +1451,7 @@ Partial parses: **{partial_parse_count}**<br>
 Files not indexed: **{not_indexed_count}**<br>
 Out-of-scope dependency rows discarded: **{dependency_discarded}**<br>
 Semantic rows: raw **{semantic_noise["raw"]}**, local **{semantic_noise["local"]}**, non-local **{semantic_noise["non_local"]}**, discarded **{semantic_noise["discarded"]}**
+AST/CBM imports: **{import_comparison["matched_edges"]}** matched of AST **{import_comparison["ast_edges"]}** and CBM **{import_comparison["cbm_edges"]}**
 
 Main issue: {main_issue}
 
@@ -1448,6 +1515,20 @@ Example:
 Policy note:
 - Persistent daemon mode is intentionally not part of this project's operating model.
 - Current scope policy: file scope `{scope_policy.get("scope_path", scope_path)}`, qn scope `{scope_policy.get("scope_qn_prefix", "n/a")}`, excluded qn substrings `{scope_policy.get("exclude_qn_substrings", [])}`.
+
+## AST / CBM Agreement
+
+- Matched internal module imports: {import_comparison["matched_edges"]}
+- AST internal import edges: {import_comparison["ast_edges"]}
+- CBM internal import edges: {import_comparison["cbm_edges"]}
+- Missing from CBM: {len(import_comparison["missing_from_cbm"])}
+- Extra in CBM: {len(import_comparison["extra_in_cbm"])}
+
+Differences:
+{import_difference_text}
+
+An agreement status of `DEGRADED` blocks automated refactoring until each difference
+is explained as an AST limitation, provider limitation, or configured-scope issue.
 
 Examples:
 - `LOW_SIGNAL` means the semantic query should be narrowed or rewritten.
