@@ -40,8 +40,24 @@ files:
   - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
-  src/refactor_cli/architecture_report.py:
+  src/refactor_cli/analysis/architecture_report.py:
   - FunctionDef collect_architecture_report
+  src/refactor_cli/analysis/candidate_tools.py:
+  - FunctionDef resolve_cbm_binary
+  - FunctionDef _flag_name
+  - FunctionDef _flag_value
+  - FunctionDef _extract_json_line
+  - FunctionDef run_cbm_tool
+  src/refactor_cli/analysis/dependency_graph.py:
+  - SimpleStatementLine EDGE_QUERY
+  - FunctionDef collect_dependency_graph
+  src/refactor_cli/analysis/semantic_retrieval.py:
+  - FunctionDef collect_semantic_retrieval
+  src/refactor_cli/analysis/source_index.py:
+  - FunctionDef _project_name_from_root
+  - FunctionDef run_source_index
+  - FunctionDef run_coderag_validate_only
+  src/refactor_cli/architecture_report.py: []
   src/refactor_cli/candidate_report.py:
   - FunctionDef _extract_text_content
   - FunctionDef _architecture_text
@@ -97,15 +113,8 @@ files:
   - FunctionDef _example_edge_lines
   - FunctionDef _line_list
   - FunctionDef build_candidate_report
-  src/refactor_cli/candidate_tools.py:
-  - FunctionDef resolve_cbm_binary
-  - FunctionDef _flag_name
-  - FunctionDef _flag_value
-  - FunctionDef _extract_json_line
-  - FunctionDef run_cbm_tool
-  src/refactor_cli/dependency_graph.py:
-  - SimpleStatementLine EDGE_QUERY
-  - FunctionDef collect_dependency_graph
+  src/refactor_cli/candidate_tools.py: []
+  src/refactor_cli/dependency_graph.py: []
   src/refactor_cli/discovery.py:
   - FunctionDef load_config
   - FunctionDef resolve_project_root
@@ -136,12 +145,8 @@ files:
   - FunctionDef _run_ruff_fix_imports
   src/refactor_cli/safeguards.py:
   - FunctionDef post_apply_safeguards
-  src/refactor_cli/semantic_retrieval.py:
-  - FunctionDef collect_semantic_retrieval
-  src/refactor_cli/source_index.py:
-  - FunctionDef _project_name_from_root
-  - FunctionDef run_source_index
-  - FunctionDef run_coderag_validate_only
+  src/refactor_cli/semantic_retrieval.py: []
+  src/refactor_cli/source_index.py: []
   src/refactor_cli/transforms.py:
   - FunctionDef split_nodes_by_symbol
   - FunctionDef build_target_module

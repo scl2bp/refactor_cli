@@ -15,10 +15,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from refactor_cli.architecture_report import collect_architecture_report
+from refactor_cli.analysis.architecture_report import collect_architecture_report
 from refactor_cli.candidate_report import build_candidate_report
-from refactor_cli.candidate_tools import resolve_cbm_binary, run_cbm_tool
-from refactor_cli.dependency_graph import collect_dependency_graph
+from refactor_cli.analysis.candidate_tools import resolve_cbm_binary; from refactor_cli.analysis.candidate_tools import run_cbm_tool
+from refactor_cli.analysis.dependency_graph import collect_dependency_graph
 from refactor_cli.discovery import (
     discover_python_files,
     generate_tree_payload,
@@ -36,8 +36,8 @@ from refactor_cli.runtime_tools import (
     ensure_runtime_dependencies,
     run_formatter_on_file,
 )
-from refactor_cli.semantic_retrieval import collect_semantic_retrieval
-from refactor_cli.source_index import run_coderag_validate_only, run_source_index
+from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
+from refactor_cli.analysis.source_index import run_source_index; from refactor_cli.analysis.source_index import run_coderag_validate_only
 from refactor_cli.transforms import (
     apply_unified_diff_to_text,
     build_after_tree_from_edit,

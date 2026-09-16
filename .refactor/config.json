@@ -10,5 +10,22 @@
       "build/**",
       "dist/**"
     ]
+  },
+  "candidate_analysis": {
+    "scope_path": "src/refactor_cli",
+    "scope_qn_prefix": "refactor_cli.src.refactor_cli",
+    "semantic_terms": [
+      "dependency",
+      "module",
+      "architecture",
+      "transformation",
+      "quality metrics"
+    ],
+    "semantic_limit": 100,
+    "exclude_qn_substrings": [
+      ".eval."
+    ],
+    "output_dir": ".refactor/analysis/candidates",
+    "report_output": ".refactor/analysis/candidates/report.md"
   }
 }

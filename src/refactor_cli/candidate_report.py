@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from refactor_cli.candidate_tools import resolve_cbm_binary, run_cbm_tool
+from refactor_cli.analysis.candidate_tools import resolve_cbm_binary; from refactor_cli.analysis.candidate_tools import run_cbm_tool
 from refactor_cli.file_io import load_json
 
 
