@@ -56,6 +56,17 @@ def run_source_index(
         },
         cwd=resolved_root,
     )
+    if not index_result["ok"] and mode != "fast":
+        index_result = run_cbm_tool(
+            cbm_binary,
+            "index_repository",
+            {
+                "repo_path": str(staged_repo_path.resolve()),
+                "mode": "fast",
+                "name": resolved_name,
+            },
+            cwd=resolved_root,
+        )
 
     projects_result = run_cbm_tool(cbm_binary, "list_projects", {}, cwd=project_root)
 
