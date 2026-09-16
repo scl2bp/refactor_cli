@@ -1,15 +1,15 @@
 {
   "schema_version": 2,
-  "generated_at_utc": "2026-09-16T19:19:49+00:00",
+  "generated_at_utc": "2026-09-16T19:36:49+00:00",
   "paths": [
     "src/refactor_cli"
   ],
   "python_files": 23,
-  "total_loc": 5120,
-  "total_sloc": 4318,
+  "total_loc": 5143,
+  "total_sloc": 4341,
   "total_blank": 717,
-  "avg_mi": 53.686,
-  "avg_cc": 5.293,
+  "avg_mi": 53.662,
+  "avg_cc": 5.299,
   "p95_cc": 15.0,
   "counts_by_rank": {
     "A": 120,
@@ -887,43 +887,43 @@
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_candidate_phase_a",
-      "line": 29,
+      "line": 30,
       "complexity": 12.0,
       "rank": "C"
     },
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_candidate_report",
-      "line": 150,
+      "line": 151,
       "complexity": 2.0,
       "rank": "A"
     },
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_candidate_evaluate",
-      "line": 174,
+      "line": 175,
       "complexity": 7.0,
       "rank": "B"
     },
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_candidate_search",
-      "line": 196,
+      "line": 197,
       "complexity": 9.0,
       "rank": "B"
     },
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_internal_dependencies_report",
-      "line": 238,
+      "line": 239,
       "complexity": 4.0,
       "rank": "A"
     },
     {
       "file": "src/refactor_cli/cli/commands.py",
       "name": "cmd_quality_gate",
-      "line": 267,
-      "complexity": 9.0,
+      "line": 268,
+      "complexity": 10.0,
       "rank": "B"
     },
     {
@@ -1349,11 +1349,72 @@
       "rank": "C"
     }
   ],
-  "coverage_pct": null,
-  "coverage_files": 0,
-  "low_coverage_files": [],
+  "coverage_pct": 39.99,
+  "coverage_files": 16,
+  "low_coverage_files": [
+    {
+      "file": "src/refactor_cli/__main__.py",
+      "coverage_pct": 0.0,
+      "covered_lines": 0,
+      "num_statements": 3
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "coverage_pct": 7.788,
+      "covered_lines": 25,
+      "num_statements": 321
+    },
+    {
+      "file": "src/refactor_cli/safeguards.py",
+      "coverage_pct": 12.0,
+      "covered_lines": 3,
+      "num_statements": 25
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "coverage_pct": 22.667,
+      "covered_lines": 17,
+      "num_statements": 75
+    },
+    {
+      "file": "src/refactor_cli/tree_codec.py",
+      "coverage_pct": 29.167,
+      "covered_lines": 7,
+      "num_statements": 24
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "coverage_pct": 31.111,
+      "covered_lines": 14,
+      "num_statements": 45
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "coverage_pct": 31.707,
+      "covered_lines": 13,
+      "num_statements": 41
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "coverage_pct": 35.277,
+      "covered_lines": 236,
+      "num_statements": 669
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "coverage_pct": 36.271,
+      "covered_lines": 107,
+      "num_statements": 295
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "coverage_pct": 44.444,
+      "covered_lines": 12,
+      "num_statements": 27
+    }
+  ],
   "coverage_error": null,
-  "coverage_source": null,
+  "coverage_source": "fresh test run via --coverage-command",
   "ruff_violations": 35,
   "ruff_by_category": {
     "I": 10,

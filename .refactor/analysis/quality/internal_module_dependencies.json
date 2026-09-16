@@ -1,7 +1,7 @@
 {
   "scope": "/workspace/refactor_cli/src/refactor_cli",
   "package": "refactor_cli",
-  "python_files": 21,
+  "python_files": 23,
   "parse_errors": [],
   "modules": [
     {
@@ -66,9 +66,25 @@
       ]
     },
     {
+      "module": "refactor_cli.analysis.internal_dependencies_report",
+      "file": "src/refactor_cli/analysis/internal_dependencies_report.py",
+      "fan_in": 1,
+      "fan_out": 1,
+      "imports": [
+        "refactor_cli.analysis.quality_report"
+      ]
+    },
+    {
       "module": "refactor_cli.analysis.quality",
       "file": "src/refactor_cli/analysis/quality.py",
       "fan_in": 2,
+      "fan_out": 0,
+      "imports": []
+    },
+    {
+      "module": "refactor_cli.analysis.quality_gate",
+      "file": "src/refactor_cli/analysis/quality_gate.py",
+      "fan_in": 1,
       "fan_out": 0,
       "imports": []
     },
@@ -120,14 +136,15 @@
       "module": "refactor_cli.cli.commands",
       "file": "src/refactor_cli/cli/commands.py",
       "fan_in": 1,
-      "fan_out": 14,
+      "fan_out": 15,
       "imports": [
         "refactor_cli",
         "refactor_cli.analysis.architecture_report",
         "refactor_cli.analysis.candidate_tools",
         "refactor_cli.analysis.dependency_graph",
         "refactor_cli.analysis.evaluation",
-        "refactor_cli.analysis.quality_report",
+        "refactor_cli.analysis.internal_dependencies_report",
+        "refactor_cli.analysis.quality_gate",
         "refactor_cli.analysis.scope_baseline",
         "refactor_cli.analysis.semantic_retrieval",
         "refactor_cli.analysis.source_index",
@@ -275,7 +292,7 @@
       "refactor_cli.analysis.candidate_tools"
     ]
   ],
-  "mermaid": "flowchart LR\n    refactor_cli --> refactor_cli_analysis_candidate_tools\n    refactor_cli --> refactor_cli_cli_parser\n    refactor_cli --> refactor_cli_config_settings\n    refactor_cli --> refactor_cli_discovery\n    refactor_cli --> refactor_cli_file_io\n    refactor_cli --> refactor_cli_runtime_tools\n    refactor_cli --> refactor_cli_transforms\n    refactor_cli --> refactor_cli_tree_codec\n    refactor_cli___main__ --> refactor_cli\n    refactor_cli_analysis_architecture_report --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_dependency_graph --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_evaluation --> refactor_cli_analysis_quality\n    refactor_cli_analysis_evaluation --> refactor_cli_candidate_report\n    refactor_cli_analysis_evaluation --> refactor_cli_file_io\n    refactor_cli_analysis_semantic_retrieval --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_source_index --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_source_index --> refactor_cli_discovery\n    refactor_cli_candidate_report --> refactor_cli_analysis_candidate_tools\n    refactor_cli_candidate_report --> refactor_cli_analysis_quality\n    refactor_cli_candidate_report --> refactor_cli_file_io\n    refactor_cli_cli_commands --> refactor_cli\n    refactor_cli_cli_commands --> refactor_cli_analysis_architecture_report\n    refactor_cli_cli_commands --> refactor_cli_analysis_candidate_tools\n    refactor_cli_cli_commands --> refactor_cli_analysis_dependency_graph\n    refactor_cli_cli_commands --> refactor_cli_analysis_evaluation\n    refactor_cli_cli_commands --> refactor_cli_analysis_quality_report\n    refactor_cli_cli_commands --> refactor_cli_analysis_scope_baseline\n    refactor_cli_cli_commands --> refactor_cli_analysis_semantic_retrieval\n    refactor_cli_cli_commands --> refactor_cli_analysis_source_index\n    refactor_cli_cli_commands --> refactor_cli_candidate_report\n    refactor_cli_cli_commands --> refactor_cli_config_settings\n    refactor_cli_cli_commands --> refactor_cli_discovery\n    refactor_cli_cli_commands --> refactor_cli_file_io\n    refactor_cli_cli_commands --> refactor_cli_runtime_tools\n    refactor_cli_cli_parser --> refactor_cli\n    refactor_cli_cli_parser --> refactor_cli_cli_commands\n    refactor_cli_config_settings --> refactor_cli_discovery\n    refactor_cli_config_settings --> refactor_cli_file_io\n    refactor_cli_discovery --> refactor_cli_file_io\n    refactor_cli_safeguards --> refactor_cli_runtime_tools\n    refactor_cli_transforms --> refactor_cli_discovery\n    refactor_cli_transforms --> refactor_cli_runtime_tools\n    refactor_cli_transforms --> refactor_cli_safeguards\n    refactor_cli_transforms --> refactor_cli_tree_codec\n    refactor_cli_tree_codec --> refactor_cli_file_io\n    refactor_cli[refactor_cli]\n    refactor_cli___main__[refactor_cli.__main__]\n    refactor_cli_analysis_architecture_report[refactor_cli.analysis.architecture_report]\n    refactor_cli_analysis_candidate_tools[refactor_cli.analysis.candidate_tools]\n    refactor_cli_analysis_dependency_graph[refactor_cli.analysis.dependency_graph]\n    refactor_cli_analysis_evaluation[refactor_cli.analysis.evaluation]\n    refactor_cli_analysis_quality[refactor_cli.analysis.quality]\n    refactor_cli_analysis_quality_report[refactor_cli.analysis.quality_report]\n    refactor_cli_analysis_scope_baseline[refactor_cli.analysis.scope_baseline]\n    refactor_cli_analysis_semantic_retrieval[refactor_cli.analysis.semantic_retrieval]\n    refactor_cli_analysis_source_index[refactor_cli.analysis.source_index]\n    refactor_cli_candidate_report[refactor_cli.candidate_report]\n    refactor_cli_cli_commands[refactor_cli.cli.commands]\n    refactor_cli_cli_parser[refactor_cli.cli.parser]\n    refactor_cli_config_settings[refactor_cli.config.settings]\n    refactor_cli_discovery[refactor_cli.discovery]\n    refactor_cli_file_io[refactor_cli.file_io]\n    refactor_cli_runtime_tools[refactor_cli.runtime_tools]\n    refactor_cli_safeguards[refactor_cli.safeguards]\n    refactor_cli_transforms[refactor_cli.transforms]\n    refactor_cli_tree_codec[refactor_cli.tree_codec]",
+  "mermaid": "flowchart LR\n    refactor_cli --> refactor_cli_analysis_candidate_tools\n    refactor_cli --> refactor_cli_cli_parser\n    refactor_cli --> refactor_cli_config_settings\n    refactor_cli --> refactor_cli_discovery\n    refactor_cli --> refactor_cli_file_io\n    refactor_cli --> refactor_cli_runtime_tools\n    refactor_cli --> refactor_cli_transforms\n    refactor_cli --> refactor_cli_tree_codec\n    refactor_cli___main__ --> refactor_cli\n    refactor_cli_analysis_architecture_report --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_dependency_graph --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_evaluation --> refactor_cli_analysis_quality\n    refactor_cli_analysis_evaluation --> refactor_cli_candidate_report\n    refactor_cli_analysis_evaluation --> refactor_cli_file_io\n    refactor_cli_analysis_internal_dependencies_report --> refactor_cli_analysis_quality_report\n    refactor_cli_analysis_semantic_retrieval --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_source_index --> refactor_cli_analysis_candidate_tools\n    refactor_cli_analysis_source_index --> refactor_cli_discovery\n    refactor_cli_candidate_report --> refactor_cli_analysis_candidate_tools\n    refactor_cli_candidate_report --> refactor_cli_analysis_quality\n    refactor_cli_candidate_report --> refactor_cli_file_io\n    refactor_cli_cli_commands --> refactor_cli\n    refactor_cli_cli_commands --> refactor_cli_analysis_architecture_report\n    refactor_cli_cli_commands --> refactor_cli_analysis_candidate_tools\n    refactor_cli_cli_commands --> refactor_cli_analysis_dependency_graph\n    refactor_cli_cli_commands --> refactor_cli_analysis_evaluation\n    refactor_cli_cli_commands --> refactor_cli_analysis_internal_dependencies_report\n    refactor_cli_cli_commands --> refactor_cli_analysis_quality_gate\n    refactor_cli_cli_commands --> refactor_cli_analysis_scope_baseline\n    refactor_cli_cli_commands --> refactor_cli_analysis_semantic_retrieval\n    refactor_cli_cli_commands --> refactor_cli_analysis_source_index\n    refactor_cli_cli_commands --> refactor_cli_candidate_report\n    refactor_cli_cli_commands --> refactor_cli_config_settings\n    refactor_cli_cli_commands --> refactor_cli_discovery\n    refactor_cli_cli_commands --> refactor_cli_file_io\n    refactor_cli_cli_commands --> refactor_cli_runtime_tools\n    refactor_cli_cli_parser --> refactor_cli\n    refactor_cli_cli_parser --> refactor_cli_cli_commands\n    refactor_cli_config_settings --> refactor_cli_discovery\n    refactor_cli_config_settings --> refactor_cli_file_io\n    refactor_cli_discovery --> refactor_cli_file_io\n    refactor_cli_safeguards --> refactor_cli_runtime_tools\n    refactor_cli_transforms --> refactor_cli_discovery\n    refactor_cli_transforms --> refactor_cli_runtime_tools\n    refactor_cli_transforms --> refactor_cli_safeguards\n    refactor_cli_transforms --> refactor_cli_tree_codec\n    refactor_cli_tree_codec --> refactor_cli_file_io\n    refactor_cli[refactor_cli]\n    refactor_cli___main__[refactor_cli.__main__]\n    refactor_cli_analysis_architecture_report[refactor_cli.analysis.architecture_report]\n    refactor_cli_analysis_candidate_tools[refactor_cli.analysis.candidate_tools]\n    refactor_cli_analysis_dependency_graph[refactor_cli.analysis.dependency_graph]\n    refactor_cli_analysis_evaluation[refactor_cli.analysis.evaluation]\n    refactor_cli_analysis_internal_dependencies_report[refactor_cli.analysis.internal_dependencies_report]\n    refactor_cli_analysis_quality[refactor_cli.analysis.quality]\n    refactor_cli_analysis_quality_gate[refactor_cli.analysis.quality_gate]\n    refactor_cli_analysis_quality_report[refactor_cli.analysis.quality_report]\n    refactor_cli_analysis_scope_baseline[refactor_cli.analysis.scope_baseline]\n    refactor_cli_analysis_semantic_retrieval[refactor_cli.analysis.semantic_retrieval]\n    refactor_cli_analysis_source_index[refactor_cli.analysis.source_index]\n    refactor_cli_candidate_report[refactor_cli.candidate_report]\n    refactor_cli_cli_commands[refactor_cli.cli.commands]\n    refactor_cli_cli_parser[refactor_cli.cli.parser]\n    refactor_cli_config_settings[refactor_cli.config.settings]\n    refactor_cli_discovery[refactor_cli.discovery]\n    refactor_cli_file_io[refactor_cli.file_io]\n    refactor_cli_runtime_tools[refactor_cli.runtime_tools]\n    refactor_cli_safeguards[refactor_cli.safeguards]\n    refactor_cli_transforms[refactor_cli.transforms]\n    refactor_cli_tree_codec[refactor_cli.tree_codec]",
   "complexity": [
     {
       "name": "build_candidate_report",
@@ -346,7 +363,7 @@
     {
       "name": "cmd_candidate_phase_a",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 28,
+      "line": 29,
       "complexity": 12
     },
     {
@@ -471,6 +488,11 @@
       "line": 6
     },
     {
+      "name": "run_quality_gate",
+      "file": "src/refactor_cli/analysis/quality_gate.py",
+      "line": 25
+    },
+    {
       "name": "collect_quality_report",
       "file": "src/refactor_cli/analysis/quality_report.py",
       "line": 120
@@ -513,32 +535,32 @@
     {
       "name": "cmd_candidate_phase_a",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 28
+      "line": 29
     },
     {
       "name": "cmd_candidate_report",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 149
+      "line": 150
     },
     {
       "name": "cmd_candidate_evaluate",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 173
+      "line": 174
     },
     {
       "name": "cmd_candidate_search",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 195
+      "line": 196
     },
     {
-      "name": "cmd_quality_report",
+      "name": "cmd_internal_dependencies_report",
       "file": "src/refactor_cli/cli/commands.py",
-      "line": 237
+      "line": 238
     },
     {
       "name": "build_parser",
       "file": "src/refactor_cli/cli/parser.py",
-      "line": 22
+      "line": 24
     },
     {
       "name": "load_config",
@@ -755,7 +777,7 @@
     {
       "module": "refactor_cli.cli.commands",
       "reason": "high fan-out",
-      "fan_out": 14
+      "fan_out": 15
     },
     {
       "module": "refactor_cli",

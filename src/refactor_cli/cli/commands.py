@@ -294,7 +294,8 @@ def cmd_quality_gate(args: argparse.Namespace) -> int:
             [
                 "--coverage-command",
                 (
-                    f'"{sys.executable}" -m pytest --cache-clear -p no:cacheprovider '
+                    f'"{sys.executable}" -m coverage erase && '
+                    f'"{sys.executable}" -m pytest -p no:cacheprovider '
                     f'--cov=src/refactor_cli --cov-report=json:{coverage_json} -q'
                 ),
                 "--coverage-json-path",

@@ -1,6 +1,6 @@
 # Code Quality Gate Report
 
-Generated at (UTC): 2026-09-16T19:19:50+00:00
+Generated at (UTC): 2026-09-16T19:36:53+00:00
 Scope: src/refactor_cli
 
 ## Gate
@@ -13,22 +13,38 @@ Reasons:
 ## Current Snapshot
 
 - Python files: 23
-- LOC: 5120 (SLOC: 4318, Blank: 717)
-- Avg MI: 53.686
-- Avg CC: 5.293
+- LOC: 5143 (SLOC: 4341, Blank: 717)
+- Avg MI: 53.662
+- Avg CC: 5.299
 - P95 CC: 15.0
 - Rank counts: A=120, B=35, C=16, D=2, E=0, F=1
 - D/E/F blocks: 3
 - F blocks: 1
 - Parse-error files: 0
 - Unused top-level functions: 6
-- Coverage: N/A%
+- Coverage: 39.99%
 
 ## Coverage
 
-- Total line coverage: N/A%
-- Files measured: 0
+- Total line coverage: 39.99%
+- Files measured: 16
+- Coverage source: fresh test run via --coverage-command
 - Coverage status: OK
+
+### Lowest Coverage Files
+
+| Coverage % | Covered/Statements | File |
+|---:|---:|---|
+| 0.0 | 0/3 | src/refactor_cli/__main__.py |
+| 7.788 | 25/321 | src/refactor_cli/transforms.py |
+| 12.0 | 3/25 | src/refactor_cli/safeguards.py |
+| 22.667 | 17/75 | src/refactor_cli/discovery.py |
+| 29.167 | 7/24 | src/refactor_cli/tree_codec.py |
+| 31.111 | 14/45 | src/refactor_cli/analysis/candidate_tools.py |
+| 31.707 | 13/41 | src/refactor_cli/runtime_tools.py |
+| 35.277 | 236/669 | src/refactor_cli/candidate_report.py |
+| 36.271 | 107/295 | src/refactor_cli/__init__.py |
+| 44.444 | 12/27 | src/refactor_cli/file_io.py |
 
 ## Code Repetition
 
@@ -92,12 +108,13 @@ Reasons:
 
 ## Baseline Delta
 
-- Baseline timestamp: 2026-09-16T19:19:49+00:00
+- Baseline timestamp: 2026-09-16T19:36:49+00:00
 - Delta avg_cc: 0.0
 - Delta p95_cc: 0.0
 - Delta D/E/F blocks: 0
 - Delta F blocks: 0
 - Delta parse-error files: 0
+- Delta coverage_pct: 0.0
 - Delta ruff_violations: 0
 - Delta duplicate_block_pairs: 0
 - Delta high_param_count: 0

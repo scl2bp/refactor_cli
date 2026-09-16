@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T18:44:34
+Generated: 2026-09-16T19:26:15
 
 Project: `refactor_cli`
 
@@ -16,15 +16,15 @@ Safe for automated refactoring: **NO**
 
 Scope: `src/refactor_cli`
 
-Configured/staged files: **19**<br>
-AST parsed files: **19**<br>
-AST internal import edges: **40**<br>
-AST external imports: **68**<br>
+Configured/staged files: **23**<br>
+AST parsed files: **23**<br>
+AST internal import edges: **47**<br>
+AST external imports: **79**<br>
 Partial parses: **0**<br>
 Files not indexed: **0**<br>
 Out-of-scope dependency rows discarded: **18**<br>
-Semantic rows: raw **100**, local **93**, non-local **7**, discarded **0**
-AST/CBM imports: **39** matched of AST **40** and CBM **39**
+Semantic rows: raw **100**, local **94**, non-local **6**, discarded **0**
+AST/CBM imports: **45** matched of AST **47** and CBM **46**
 
 Main issue: Some relationships leave the configured corpus; they are treated as external dependencies and are excluded from internal refactoring evidence.
 
@@ -51,10 +51,10 @@ from configured files point to them.
 - Exclude patterns: `['.venv/**', '**/__pycache__/**', 'build/**', 'dist/**']`
 - Candidate package scope: `src/refactor_cli`
 - Qualified-name scope: `refactor_cli.src.refactor_cli`
-- Configured files: **19**
-- AST files analyzed: **19**
-- CBM files indexed: **19**
-- AST external imports: **68**
+- Configured files: **23**
+- AST files analyzed: **23**
+- CBM files indexed: **23**
+- AST external imports: **79**
 - CBM qualified-name exclusions: `['.eval.']`
 
 How the scope is applied:
@@ -75,9 +75,9 @@ format is `affected / total`, where coverage is the accepted share of the total.
 
 | Capability | Affected / Total | Coverage | Loss | Grade |
 |---|---:|---:|---:|---|
-| configured files | 0 / 19 | 100.0% | 0.0% | NONE |
-| AST/CBM import agreement | 1 / 40 | 97.5% | 2.5% | MODERATE |
-| semantic locality | 7 / 100 | 93.0% | 7.0% | MAJOR |
+| configured files | 0 / 23 | 100.0% | 0.0% | NONE |
+| AST/CBM import agreement | 3 / 47 | 93.62% | 6.38% | MAJOR |
+| semantic locality | 6 / 100 | 94.0% | 6.0% | MAJOR |
 
 Grade thresholds: `NONE` = 0% loss, `MINOR` = up to 1%, `MODERATE` = up to 5%,
 `MAJOR` = up to 20%, and `CRITICAL` = above 20%. A zero denominator is
@@ -104,23 +104,21 @@ Example:
 
 | Artifact | Bytes |
 |---|---:|
-| architecture_report.json | 6505 |
-| dependency_graph.json | 122457 |
-| evaluation.json | 1540 |
-| scope_baseline.json | 15436 |
-| semantic_retrieval.json | 108356 |
-| source_index.json | 8072 |
+| architecture_report.json | 7101 |
+| dependency_graph.json | 136150 |
+| scope_baseline.json | 18384 |
+| semantic_retrieval.json | 110010 |
+| source_index.json | 8277 |
 | summary.json | 642 |
 
 ```mermaid
 pie showData
   title Artifact Sizes (bytes)
-  "architecture_report.json" : 6505
-  "dependency_graph.json" : 122457
-  "evaluation.json" : 1540
-  "scope_baseline.json" : 15436
-  "semantic_retrieval.json" : 108356
-  "source_index.json" : 8072
+  "architecture_report.json" : 7101
+  "dependency_graph.json" : 136150
+  "scope_baseline.json" : 18384
+  "semantic_retrieval.json" : 110010
+  "source_index.json" : 8277
   "summary.json" : 642
 ```
 
@@ -146,7 +144,7 @@ Examples:
 
 | Artifact | Candidate | Input Used | Output Produced | How To Interpret |
 |---|---|---|---|---|
-| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=19 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
+| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=23 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
 | dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE coalesce(s.qn, s.name) STARTS WITH 'refactor_cli.src.refactor_cli' AND NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
 | semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'module', 'architecture', 'transformation', 'quality metrics'], scope hint=src/refactor_cli | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
 | architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on the configured corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
@@ -177,14 +175,16 @@ Policy note:
 
 ## AST / CBM Agreement
 
-- Matched internal module imports: 39
-- AST internal import edges: 40
-- CBM internal import edges: 39
-- Missing from CBM: 1
-- Extra in CBM: 0
+- Matched internal module imports: 45
+- AST internal import edges: 47
+- CBM internal import edges: 46
+- Missing from CBM: 2
+- Extra in CBM: 1
 
 Differences:
 - Missing from CBM: `refactor_cli` -> `refactor_cli.cli.parser`
+- Missing from CBM: `refactor_cli.cli.commands` -> `refactor_cli.analysis.internal_dependencies_report`
+- Extra in CBM: `refactor_cli.cli.commands` -> `refactor_cli.analysis.quality_report`
 
 An agreement status of `DEGRADED` blocks automated refactoring until each difference
 is explained as an AST limitation, provider limitation, or configured-scope issue.
@@ -196,8 +196,8 @@ Examples:
 
 ## Index Health
 
-- Indexed nodes: 229
-- Indexed edges: 1058
+- Indexed nodes: 250
+- Indexed edges: 1189
 - Excluded directories shown by the tool: .git
 - Partial parse count: 0
 - Not indexed file count: 0
@@ -213,7 +213,7 @@ Example:
 
 ## Configured-Corpus Architecture Snapshot
 
-- Languages detected in the indexed corpus: Python=19
+- Languages detected in the indexed corpus: Python=23
 - This describes the isolated configured corpus, not the surrounding repository.
 
 Example:
@@ -223,40 +223,40 @@ Example:
 
 ## Scoped Architecture For `src/refactor_cli`
 
-- Scoped total nodes: 214
-- Scoped total edges: 647
+- Scoped total nodes: 235
+- Scoped total edges: 712
 - Entry point: refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
 
 ```mermaid
 pie showData
   title Scoped Node Labels
-  "Function" : 164
-  "File" : 19
-  "Module" : 19
-  "Variable" : 8
+  "Function" : 174
+  "File" : 23
+  "Module" : 23
+  "Variable" : 11
   "Folder" : 4
 ```
 
 Top scoped edge types:
-- CALLS=231, DEFINES=191, IMPORTS=86, SEMANTICALLY_RELATED=80, CONTAINS_FILE=19, USAGE=11
+- CALLS=251, DEFINES=208, IMPORTS=101, SEMANTICALLY_RELATED=81, CONTAINS_FILE=23, USAGE=14
 
 Hotspots:
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool 12
 - refactor_cli.src.refactor_cli.discovery.resolve_project_root 7
 - refactor_cli.src.refactor_cli.discovery.load_config 7
+- refactor_cli.src.refactor_cli.config.settings._load_optional_config 6
+- refactor_cli.src.refactor_cli.file_io.load_json 6
+- refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root 5
 - refactor_cli.src.refactor_cli.config.settings._config_or_default 5
-- refactor_cli.src.refactor_cli.config.settings._load_optional_config 5
-- refactor_cli.src.refactor_cli.discovery.discover_python_files 5
-- refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root 4
-- refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config 4
+- refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config 5
 
 Clusters:
-- 5 src 44 0.8033 build_candidate_report;_mermaid_scoped_edges;_extract_text_content;_architecture_text;_parse_section_lines src CALLS
-- 1 src 28 0.7955 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;post_apply_safeguards;ensure_runtime_dependencies src CALLS
-- 3 src 23 0.6731 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;load_config;_resolve_candidate_report_settings;_load_optional_config src CALLS
+- 3 src 51 0.8077 build_candidate_report;evaluate_candidate_artifacts;load_json;_configured_semantic_profiles_summary;_extract_text_content src CALLS
+- 1 src 21 0.64 load_config;cmd_apply_tree_patch;cmd_apply_tree_edit;resolve_project_root;run_source_index src CALLS
+- 9 src 21 0.6875 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;_load_optional_config;_candidate_analysis_config src CALLS
+- 5 src 19 0.6216 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
 - 0 src 18 0.7308 generate_tree_payload;apply_extract_top_level_symbols;write_tree_yaml;build_updated_source;ensure_parent src CALLS
-- 2 src 18 0.5 cmd_candidate_phase_a;resolve_project_root;run_source_index;discover_python_files;cmd_format src CALLS
-- 6 src 15 0.5484 run_cbm_tool;_configured_semantic_profiles_summary;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
+- 2 src 17 0.68 run_tree_transition;post_apply_safeguards;apply_extract_top_level_symbols_emend;build_after_tree_from_edit;build_symbol_index src CALLS
 
 Entry points:
 - refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
@@ -272,7 +272,7 @@ Example:
 ## Scoped Module Dependencies
 
 - Data source: **AST scope baseline**
-- Unique module import edges: **40**
+- Unique module import edges: **47**
 - Meaning: each edge is a module importing another module inside the configured scope.
 - This is not a function call graph; use the next section for function-level calls.
 
@@ -289,20 +289,20 @@ flowchart LR
   __main__["__main__"] -->|IMPORTS| refactor_cli["refactor_cli"]
   architecture_report["architecture_report"] -->|IMPORTS| candidate_tools["candidate_tools"]
   dependency_graph["dependency_graph"] -->|IMPORTS| candidate_tools["candidate_tools"]
-  semantic_retrieval["semantic_retrieval"] -->|IMPORTS| candidate_tools["candidate_tools"]
+  evaluation["evaluation"] -->|IMPORTS| quality["quality"]
 ```
 
 Highest fan-out modules:
-- refactor_cli.cli.commands (13)
+- refactor_cli.cli.commands (15)
 - refactor_cli (8)
 - refactor_cli.transforms (4)
+- refactor_cli.analysis.evaluation (3)
+- refactor_cli.candidate_report (3)
 - refactor_cli.analysis.source_index (2)
-- refactor_cli.candidate_report (2)
-- refactor_cli.cli.parser (2)
 
 Highest fan-in modules:
 - refactor_cli.analysis.candidate_tools (7)
-- refactor_cli.file_io (6)
+- refactor_cli.file_io (7)
 - refactor_cli.discovery (5)
 - refactor_cli.runtime_tools (4)
 - refactor_cli (3)
@@ -426,32 +426,32 @@ Configured query findings:
 - No profile findings available.
 
 Evaluation scorecard for the baseline scoped search:
-- local grouped files: 8
+- local grouped files: 9
 - local grouped rows: 30
-- local ranking rows: 93
-- non-local ranking rows: 7
+- local ranking rows: 94
+- non-local ranking rows: 6
 
 - Local grouped hits in `src/refactor_cli`:
 - src/refactor_cli/__init__.py: `__file__` (File, in=0, out=0)
 - src/refactor_cli/__main__.py: `__file__` (File, in=0, out=0)
-- src/refactor_cli/analysis/candidate_tools.py: `_extract_json_line` (Function, in=1, out=0)
 - src/refactor_cli/analysis/dependency_graph.py: `EDGE_QUERY` (Variable, in=1, out=0)
+- src/refactor_cli/analysis/evaluation.py: `REQUIRED_ARTIFACTS` (Variable, in=1, out=0)
+- src/refactor_cli/analysis/internal_dependencies_report.py: `__all__` (Variable, in=0, out=0)
 - src/refactor_cli/analysis/quality_report.py: `_complexity` (Function, in=1, out=0)
 - src/refactor_cli/analysis/quality_report.py: `_cycles` (Function, in=1, out=2)
 - src/refactor_cli/analysis/quality_report.py: `_dependency_paths` (Function, in=1, out=2)
 - src/refactor_cli/candidate_report.py: `_architecture_text` (Function, in=1, out=1)
 - src/refactor_cli/candidate_report.py: `_artifact_size_rows` (Function, in=1, out=1)
-- src/refactor_cli/candidate_report.py: `_candidate_input_rows` (Function, in=1, out=2)
 
 - Semantic rows split:
-    - local scoped rows: 93
-    - non-local rows: 7
+    - local scoped rows: 94
+    - non-local rows: 6
 
 ```mermaid
 pie showData
   title Semantic Results: Local vs Non-local
-  "local" : 93
-  "non_local" : 7
+  "local" : 94
+  "non_local" : 6
 ```
 
 Observation:
