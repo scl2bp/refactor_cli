@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-15T08:50:28
+Generated: 2026-09-15T08:55:21
 
 Project: `refactor_cli`
 
@@ -34,24 +34,24 @@ Example:
 
 | Artifact | Bytes |
 |---|---:|
-| architecture_report.json | 18059 |
+| architecture_report.json | 6729 |
 | coderag_validate.json | 201 |
-| dependency_graph.json | 102361 |
+| dependency_graph.json | 94305 |
 | semantic_profile_runs.json | 8021 |
-| semantic_retrieval.json | 221417 |
-| source_index.json | 15710 |
-| summary.json | 569 |
+| semantic_retrieval.json | 147503 |
+| source_index.json | 15962 |
+| summary.json | 614 |
 
 ```mermaid
 pie showData
   title Artifact Sizes (bytes)
-  "architecture_report.json" : 18059
+  "architecture_report.json" : 6729
   "coderag_validate.json" : 201
-  "dependency_graph.json" : 102361
+  "dependency_graph.json" : 94305
   "semantic_profile_runs.json" : 8021
-  "semantic_retrieval.json" : 221417
-  "source_index.json" : 15710
-  "summary.json" : 569
+  "semantic_retrieval.json" : 147503
+  "source_index.json" : 15962
+  "summary.json" : 614
 ```
 
 Example:
@@ -77,8 +77,8 @@ Examples:
 | Artifact | Candidate | Input Used | Output Produced | How To Interpret |
 |---|---|---|---|---|
 | source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/architecture_report.py, src/refactor_cli/candidate_report.py, src/refactor_cli/candidate_tools.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
-| dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
-| semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'refactor', 'module', 'call graph'], scope hint= | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
+| dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE coalesce(s.qn, s.name) STARTS WITH 'refactor_cli.src.refactor_cli' AND NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
+| semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'module', 'architecture', 'transformation', 'quality metrics'], scope hint=src/refactor_cli | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
 | architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on full corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
 
 Observation:
@@ -96,13 +96,13 @@ Example:
 | Indexing and project registration | OK |
 | Scoped architecture extraction | OK |
 | Scoped dependency extraction | OK |
-| Scoped semantic retrieval signal | LOW_SIGNAL |
+| Scoped semantic retrieval signal | OK |
 | CodeRAG validation | SKIP |
 | Persistent daemon mode | OUT_OF_SCOPE |
 
 Policy note:
 - Persistent daemon mode is intentionally not part of this project's operating model.
-- Current scope policy: file scope ``, qn scope ``, excluded qn substrings `['.eval.']`.
+- Current scope policy: file scope `src/refactor_cli`, qn scope `refactor_cli.src.refactor_cli`, excluded qn substrings `['.eval.']`.
 
 Examples:
 - `LOW_SIGNAL` means the semantic query should be narrowed or rewritten.
@@ -111,130 +111,101 @@ Examples:
 
 ## Index Health
 
-- Indexed nodes: 45517
-- Indexed edges: 196762
+- Indexed nodes: 45523
+- Indexed edges: 196769
 - Excluded directories shown by the tool: .ruff_cache, .git, docs, .pytest_cache, .refactor/patches
 - Partial parse count: 60
 - Not indexed file count: 60
 
 Observation:
 - The index succeeded and is large enough for meaningful graph analysis.
-- The corpus may include auxiliary folders beyond ``, so raw full-project results are noisier than the scoped package.
+- The corpus may include auxiliary folders beyond `src/refactor_cli`, so raw full-project results are noisier than the scoped package.
 
 Example:
-- If this section shows extra noise, try `refactor-cli candidate-search --scope-path  --label Class`.
+- If this section shows extra noise, try `refactor-cli candidate-search --scope-path src/refactor_cli --label Class`.
 - Add `--cbm-options "--include-connected"` when you want CBM to show connected context around the matches.
 - Use `--cbm-options "--min-degree 1"` to suppress weaker graph noise.
 
 ## Full-Corpus Architecture Snapshot
 
-- Languages detected in the indexed corpus: C=4808, TypeScript=132, Bash=125, Python=76, YAML=49, Go=6
+- Languages detected in the indexed corpus: Python=14
 - This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
 
 Example:
 - This snapshot is useful when you want a quick sanity check on scope contamination.
-- If full-corpus results look too broad, switch to a scoped query with `--scope-path `.
+- If full-corpus results look too broad, switch to a scoped query with `--scope-path src/refactor_cli`.
 - For a tighter class view, add `--label Class`.
 
-## Scoped Architecture For ``
+## Scoped Architecture For `src/refactor_cli`
 
-- Scoped total nodes: 45517
-- Scoped total edges: 196762
-- Entry point: refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303388_buggy.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303388_buggy.c
+- Scoped total nodes: 179
+- Scoped total edges: 462
+- Entry point: refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
 
 ```mermaid
 pie showData
   title Scoped Node Labels
-  "Function" : 27352
-  "File" : 5359
-  "Module" : 5252
-  "Variable" : 2447
-  "Section" : 1258
-  "Field" : 1116
+  "Function" : 142
+  "File" : 14
+  "Module" : 14
+  "Variable" : 8
+  "Folder" : 1
 ```
 
 Top scoped edge types:
-- CALLS=66197, DEFINES=40005, USAGE=37583, SIMILAR_TO=18447, WRITES=12943, IMPORTS=8252
+- CALLS=199, DEFINES=164, IMPORTS=48, USAGE=20, CONTAINS_FILE=14, SIMILAR_TO=8
 
 Hotspots:
-- refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_free_result 3005
-- refactor_cli.eval.candidates.codebase-memory-mcp.src.store.store.cbm_store_close 586
-- refactor_cli.eval.candidates.codebase-memory-mcp.src.foundation.compat.cbm_mkdtemp 526
-- refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.arena.cbm_arena_alloc 294
-- refactor_cli.eval.candidates.codebase-memory-mcp.src.foundation.compat.cbm_setenv 278
-- refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.helpers.cbm_node_text 274
-- refactor_cli.eval.candidates.InvAASTCluster.injected_programs.incorrect_submissions.itsp.lab3.ex2813.270406.vars_info._if_3_2 227
-- refactor_cli.eval.candidates.codebase-memory-mcp.src.store.store.cbm_store_open_memory 220
+- refactor_cli.src.refactor_cli.candidate_tools.run_cbm_tool 12
+- refactor_cli.src.refactor_cli.discovery.resolve_project_root 7
+- refactor_cli.src.refactor_cli.discovery.load_config 7
+- refactor_cli.src.refactor_cli.file_io.write_json 5
+- refactor_cli.src.refactor_cli._resolve_candidate_search_settings 5
+- refactor_cli.src.refactor_cli.file_io.load_json 4
+- refactor_cli.src.refactor_cli.discovery.discover_python_files 4
+- refactor_cli.src.refactor_cli.candidate_report._scope_filter 4
 
 Clusters:
-- 3 eval 607 0.9984 extract_cpp;clsp_pointer_arrow;clsp_dot_access;clsp_auto_inference;clsp_namespace_qualified eval CALLS
-- 2737 eval 284 1 cov_extract;cov_require;cov_lit_char;cov_lit_string_method;cov_lit_bool_method eval CALLS
-- 599 eval 271 0.8782 test_rmdir_r;cbm_setenv;write_test_file;test_mkdirp;cbm_unsetenv eval CALLS
-- 94 eval 268 1 main;_scope_4_3;_loop_3_2;_return_3_6;_scope_2_7 eval CALLS
-- 606 eval 262 0.8693 record_agent_config_error;install_additional_agent_configs;uninstall_additional_agents;install_claude_code_config;install_agent_client_registry eval CALLS
-- 28 eval 235 0.9956 print;read;get;append;len eval;len;print;str;int CALLS
+- 8 src 40 0.7797 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_extract_text_content;_architecture_text src CALLS
+- 3 src 28 0.7955 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;ensure_runtime_dependencies;post_apply_safeguards src CALLS
+- 0 src 16 0.6452 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
+- 1 src 16 0.5122 load_config;resolve_project_root;generate_tree_payload;run_source_index;cmd_format src CALLS
+- 2 src 16 0.6765 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;_config_or_default;_candidate_analysis_config src CALLS
+- 7 src 7 0.7 apply_extract_top_level_symbols;build_updated_source;split_nodes_by_symbol;build_target_module;load_module src CALLS
 
 Entry points:
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303388_buggy.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303388_buggy.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303388_correct.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303388_correct.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303406_buggy.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303406_buggy.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303406_correct.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303406_correct.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303425_buggy.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303425_buggy.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.303425_correct.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/303425_correct.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3237/Main.c
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3238.303622_buggy.main .eval/candidates/InvAASTCluster/ITSP-dataset/Lab-10/3238/303622_buggy.c
+- refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
 
 Observation:
 - The real package is a compact Python CLI package.
 - The central coordination points are discovery/config/file-writing helpers and the candidate integration runner.
 
 Example:
-- Use `refactor-cli candidate-search --scope-path  --label Function` to inspect the implementation entrypoints behind this section.
+- Use `refactor-cli candidate-search --scope-path src/refactor_cli --label Function` to inspect the implementation entrypoints behind this section.
 - If you need more context around a result, add `--cbm-options "--include-connected"`.
 
 ## Scoped Module Dependencies
 
 - Data source: local AST import fallback
-- Unique module import edges: 2569
+- Unique module import edges: 0
 
 ```mermaid
 flowchart LR
-  __init__["__init__"] -->|IMPORTS| _cli["_cli"]
-  __main__["__main__"] -->|IMPORTS| _cli["_cli"]
-  __init__["__init__"] -->|IMPORTS| _globals["_globals"]
-  __init__["__init__"] -->|IMPORTS| version["version"]
-  __init__["__init__"] -->|IMPORTS| core["core"]
-  __init__["__init__"] -->|IMPORTS| lib["lib"]
-  __init__["__init__"] -->|IMPORTS| matrixlib["matrixlib"]
-  __init__["__init__"] -->|IMPORTS| compat["compat"]
-  __init__["__init__"] -->|IMPORTS| testing["testing"]
-  __init__["__init__"] -->|IMPORTS| _inspect["_inspect"]
-  __init__["__init__"] -->|IMPORTS| py3k["py3k"]
-  __init__["__init__"] -->|IMPORTS| numeric["numeric"]
+  no_edges["No local dependency edges found"]
 ```
 
 Highest fan-out modules:
-- refactor_cli..eval.venvs.repo-map-uv312.lib.python3.12.site-packages.pydantic._internal._generate_schema (29)
-- refactor_cli..eval.venvs.invaastcluster.lib.python3.10.site-packages.pip._vendor.rich.console (27)
-- refactor_cli..eval.venvs.repo-map.lib.python3.10.site-packages.pip._vendor.rich.console (27)
-- refactor_cli..eval.venvs.repo-map-uv312.lib.python3.12.site-packages.pydantic.__init__ (20)
-- refactor_cli..eval.venvs.invaast-uv38.lib.python3.8.site-packages.numpy.lib.__init__ (17)
-- refactor_cli..eval.venvs.repo-map-uv312.lib.python3.12.site-packages.aiohttp.web (17)
+- No module import edges recovered.
 
 Highest fan-in modules:
-- refactor_cli..eval.venvs.invaastcluster.lib.python3.10.site-packages.pip._vendor.rich.console (40)
-- refactor_cli..eval.venvs.repo-map.lib.python3.10.site-packages.pip._vendor.rich.console (40)
-- refactor_cli..eval.venvs.invaastcluster.lib.python3.10.site-packages.pip._vendor.rich.style (26)
-- refactor_cli..eval.venvs.repo-map.lib.python3.10.site-packages.pip._vendor.rich.style (26)
-- refactor_cli..eval.venvs.invaastcluster.lib.python3.10.site-packages.pip._vendor.rich.text (25)
-- refactor_cli..eval.venvs.repo-map.lib.python3.10.site-packages.pip._vendor.rich.text (25)
+- No inbound module import edges recovered.
 
 Observation:
 - Module-level imports show how the package is stitched together structurally.
 - This is the most stable dependency view when function-call extraction is sparse or noisy.
 
 Example:
-- Query module relationships directly with `refactor-cli candidate-search --scope-path  --label Function --cbm-options "--relationship IMPORTS"`.
+- Query module relationships directly with `refactor-cli candidate-search --scope-path src/refactor_cli --label Function --cbm-options "--relationship IMPORTS"`.
 - Add `--cbm-options "--include-connected"` to include attached context.
 
 ## Scoped Function Dependencies
@@ -243,46 +214,49 @@ The current stored `dependency_graph.json` is raw and broad. For clarity, this r
 
 ```mermaid
 flowchart LR
-  extract_c["extract_c"] -->|CALLS| cbm_extract_file["cbm_extract_file"]
-  extract_cpp["extract_cpp"] -->|CALLS| cbm_extract_file["cbm_extract_file"]
-  extract_c_family["extract_c_family"] -->|CALLS| cbm_extract_file["cbm_extract_file"]
-  clsp_simple_var_decl["clsp_simple_var_decl"] -->|CALLS| extract_c["extract_c"]
-  clsp_simple_var_decl["clsp_simple_var_decl"] -->|CALLS| find_resolved["find_resolved"]
-  clsp_simple_var_decl["clsp_simple_var_decl"] -->|CALLS| cbm_free_result["cbm_free_result"]
-  clsp_simple_var_decl["clsp_simple_var_decl"] -->|CALLS| PASS["PASS"]
-  clsp_pointer_arrow["clsp_pointer_arrow"] -->|CALLS| extract_cpp["extract_cpp"]
-  clsp_pointer_arrow["clsp_pointer_arrow"] -->|CALLS| find_resolved["find_resolved"]
-  clsp_pointer_arrow["clsp_pointer_arrow"] -->|CALLS| cbm_free_result["cbm_free_result"]
-  clsp_pointer_arrow["clsp_pointer_arrow"] -->|CALLS| PASS["PASS"]
-  clsp_dot_access["clsp_dot_access"] -->|CALLS| extract_cpp["extract_cpp"]
+  collect_architecture_report["collect_architecture_report"] -->|CALLS| len["len"]
+  collect_architecture_report["collect_architecture_report"] -->|CALLS| run_cbm_tool["run_cbm_tool"]
+  _load_optional_config["_load_optional_config"] -->|CALLS| exists["exists"]
+  _load_optional_config["_load_optional_config"] -->|CALLS| load_config["load_config"]
+  _candidate_analysis_config["_candidate_analysis_config"] -->|CALLS| get["get"]
+  _resolve_path_setting["_resolve_path_setting"] -->|CALLS| _config_or_default["_config_or_default"]
+  _resolve_path_setting["_resolve_path_setting"] -->|CALLS| str["str"]
+  _resolve_optional_project_root["_resolve_optional_project_root"] -->|CALLS| resolve_project_root["resolve_project_root"]
+  _find_default_config_path["_find_default_config_path"] -->|CALLS| exists["exists"]
+  _semantic_terms_setting["_semantic_terms_setting"] -->|CALLS| str["str"]
+  _exclude_substrings_setting["_exclude_substrings_setting"] -->|CALLS| str["str"]
+  _semantic_query_profiles_setting["_semantic_query_profiles_setting"] -->|CALLS| str["str"]
 ```
 
 Highest fan-out functions:
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_simple_var_decl (4)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_pointer_arrow (4)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_dot_access (4)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_auto_inference (4)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_namespace_qualified (4)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_constructor (4)
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (13)
+- refactor_cli.src.refactor_cli._semantic_query_profiles_setting (3)
+- refactor_cli.src.refactor_cli.architecture_report.collect_architecture_report (2)
+- refactor_cli.src.refactor_cli._load_optional_config (2)
+- refactor_cli.src.refactor_cli._resolve_path_setting (2)
+- refactor_cli.src.refactor_cli._load_summary_if_present (2)
 
 Highest fan-in targets:
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_ts_lsp.find_resolved (7)
-- refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_free_result (7)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_security_strings_allowlist.PASS (6)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_cpp (6)
-- refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_extract_file (3)
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_c (1)
+- builtins.str (5)
+- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists (3)
+- builtins.dict.get (3)
+- refactor_cli.src.refactor_cli._config_or_default (2)
+- refactor_cli.src.refactor_cli._load_optional_config (2)
+- builtins.len (1)
 
 Coherent local edge examples:
-- No fully local edges recovered in this sample.
+- refactor_cli.src.refactor_cli.architecture_report.collect_architecture_report CALLS builtins.len
+- refactor_cli.src.refactor_cli.architecture_report.collect_architecture_report CALLS refactor_cli.src.refactor_cli.candidate_tools.run_cbm_tool
+- refactor_cli.src.refactor_cli._load_optional_config CALLS refactor_cli.src.refactor_cli.discovery.load_config
+- refactor_cli.src.refactor_cli._candidate_analysis_config CALLS builtins.dict.get
+- refactor_cli.src.refactor_cli._resolve_path_setting CALLS refactor_cli.src.refactor_cli._config_or_default
+- refactor_cli.src.refactor_cli._resolve_path_setting CALLS builtins.str
 
 Suspicious edge examples:
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_c CALLS refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_extract_file
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_cpp CALLS refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_extract_file
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_c_family CALLS refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_extract_file
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_simple_var_decl CALLS refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.extract_c
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_simple_var_decl CALLS refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_ts_lsp.find_resolved
-- refactor_cli.eval.candidates.codebase-memory-mcp.tests.test_c_lsp.clsp_simple_var_decl CALLS refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.cbm.cbm_free_result
+- refactor_cli.src.refactor_cli._load_optional_config CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
+- refactor_cli.src.refactor_cli._find_default_config_path CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
+- refactor_cli.src.refactor_cli._load_summary_if_present CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
 
 Observation:
 - The graph can recover useful function-level coordination points when the qualified-name scope is set correctly.
@@ -290,54 +264,33 @@ Observation:
 - Suspicious cross-corpus edges should still be treated as a scoping or indexing problem, not as trustworthy architecture data.
 
 Example:
-- Use `refactor-cli candidate-search --scope-path  --label Function --cbm-options "--relationship CALLS"` to focus on call flow.
+- Use `refactor-cli candidate-search --scope-path src/refactor_cli --label Function --cbm-options "--relationship CALLS"` to focus on call flow.
 - If the query is too broad, add `--cbm-options "--min-degree 1"`.
 
 ## Scoped Class / Model Surface
 
 This section uses the class and method nodes exposed by codebase-memory. In Python repositories this is usually the closest available proxy for model-level structure.
 
-- Class-to-method edges recovered: 80
-- Inheritance edges recovered: 40
+- Class-to-method edges recovered: 0
+- Inheritance edges recovered: 0
 
 ```mermaid
 flowchart LR
-  SpringBootFramework["SpringBootFramework"] -->|DEFINES_METHOD| constructor["constructor"]
-  SpringBootFramework["SpringBootFramework"] -->|DEFINES_METHOD| getFrameworkName["getFrameworkName"]
-  SpringBootFramework["SpringBootFramework"] -->|DEFINES_METHOD| initializeMappings["initializeMappings"]
-  SpringBootFramework["SpringBootFramework"] -->|DEFINES_METHOD| initializeAnnotationMappings["initializeAnnotationMappings"]
-  SpringBootFramework["SpringBootFramework"] -->|DEFINES_METHOD| initializeImportPatterns["initializeImportPatterns"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractContent["extractContent"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractImports["extractImports"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractClasses["extractClasses"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractFunctions["extractFunctions"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractModuleLevelAttributes["extractModuleLevelAttributes"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractEnums["extractEnums"]
-  PythonContentExtractor["PythonContentExtractor"] -->|DEFINES_METHOD| extractEnumValues["extractEnumValues"]
+  no_edges["No local dependency edges found"]
 ```
 
 Classes with the largest method surfaces:
-- refactor_cli.eval.candidates.coderag.src.graph.neo4j-client.Neo4jClient defines 15 methods
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.extractors.python.PythonContentExtractor.PythonContentExtractor defines 11 methods
-- refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp defines 9 methods
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.SpringBootFramework.SpringBootFramework defines 5 methods
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.SparkFramework.SparkFramework defines 5 methods
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.JHipsterFramework.JHipsterFramework defines 5 methods
+- No class/method surface recovered from the scoped graph.
 
 Inheritance examples:
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.SpringBootFramework.SpringBootFramework INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.FrameworkModule.FrameworkModule
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.extractors.python.PythonContentExtractor.PythonContentExtractor INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.extractors.base.ContentExtractor.BaseContentExtractor
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.SparkFramework.SparkFramework INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.FrameworkModule.FrameworkModule
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.JHipsterFramework.JHipsterFramework INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.FrameworkModule.FrameworkModule
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.JPAFramework.JPAFramework INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.FrameworkModule.FrameworkModule
-- refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.java.frameworks.MicronautFramework.MicronautFramework INHERITS refactor_cli.eval.candidates.coderag.src.scanner.parsers.framework-detection.FrameworkModule.FrameworkModule
+- No class inheritance edges recovered.
 
 Observation:
 - This section is only as rich as the repository's class usage. Function-heavy scripts will naturally produce a sparse model view.
 - For dataclass-heavy or OO-heavy projects, this becomes the best high-level view of model boundaries and behavior ownership.
 
 Example:
-- Use `refactor-cli candidate-search --scope-path  --label Class` to inspect the same model surface interactively.
+- Use `refactor-cli candidate-search --scope-path src/refactor_cli --label Class` to inspect the same model surface interactively.
 - Add `--cbm-options "--include-connected"` if you want the surrounding function context for a class hit.
 
 ## Semantic Retrieval Interpretation
@@ -367,13 +320,22 @@ Configured query findings:
 - No profile findings available.
 
 Evaluation scorecard for the baseline scoped search:
-- local grouped files: 0
-- local grouped rows: 0
+- local grouped files: 8
+- local grouped rows: 30
 - local ranking rows: 0
 - non-local ranking rows: 0
 
-- Local grouped hits in ``:
-- No local grouped results found.
+- Local grouped hits in `src/refactor_cli`:
+- src/refactor_cli/__init__.py: `DEFAULT_APPLIED_PATCHES_DIR` (Variable, in=1, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_CANDIDATE_OUTPUT_DIR` (Variable, in=3, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_CANDIDATE_REPORT` (Variable, in=1, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_CONFIG` (Variable, in=2, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_TREE` (Variable, in=1, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_TREE_EDIT` (Variable, in=1, out=0)
+- src/refactor_cli/__init__.py: `DEFAULT_TREE_PATCH` (Variable, in=1, out=0)
+- src/refactor_cli/__init__.py: `__file__` (File, in=0, out=0)
+- src/refactor_cli/__main__.py: `__file__` (File, in=0, out=0)
+- src/refactor_cli/__init__.py: `_candidate_analysis_config` (Function, in=3, out=1)
 
 - Semantic rows split:
     - local scoped rows: 0
@@ -395,7 +357,7 @@ What this means in practice:
 - For this project, semantic retrieval is best used as package-local discovery plus a raw ranking hint, not as a reliable answer engine.
 
 How to use it here:
-- Search with file_pattern=/* when you need package-local discovery.
+- Search with file_pattern=src/refactor_cli/* when you need package-local discovery.
 - Treat semantic rows as corpus-wide ranking hints, not as a scoped file filter.
 - Use grouped hits to find local files, then inspect the file-level summary and the ranking scores together.
 - If the local ratio stays at 0, the query terms are too broad for the package or the corpus is too noisy.
@@ -403,7 +365,7 @@ How to use it here:
 More detail options:
 - Use `refactor-cli candidate-search` for ad hoc questions without rebuilding the full report.
 - Add `--cbm-options` when you want raw CBM flags such as `--include-connected` or `--relationship CALLS`.
-- Use `--scope-path ` when you want a narrower package-local query than the report default.
+- Use `--scope-path src/refactor_cli` when you want a narrower package-local query than the report default.
 - Use `--label Class` to inspect model/data surfaces and `--label Function` to inspect flow and orchestration.
 - If the report says LOW_SIGNAL, narrow the terms or add CBM graph constraints such as `--min-degree 1`.
 
