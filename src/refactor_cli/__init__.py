@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Project-agnostic structural refactoring tool.
 
 Workflow:
@@ -8,17 +7,28 @@ Workflow:
 
 from __future__ import annotations
 
+
 import argparse
+
+
 import json
+
+
 import subprocess
+
+
 import tempfile
+
+
 from pathlib import Path
+
+
 from typing import Any
 
-from refactor_cli.analysis.architecture_report import collect_architecture_report
-from refactor_cli.candidate_report import build_candidate_report
-from refactor_cli.analysis.candidate_tools import resolve_cbm_binary; from refactor_cli.analysis.candidate_tools import run_cbm_tool
-from refactor_cli.analysis.dependency_graph import collect_dependency_graph
+
+from refactor_cli.analysis.candidate_tools import resolve_cbm_binary
+
+
 from refactor_cli.discovery import (
     discover_python_files,
     generate_tree_payload,
@@ -26,24 +36,29 @@ from refactor_cli.discovery import (
     print_tree,
     resolve_project_root,
 )
+
+
 from refactor_cli.file_io import (
     archive_patch,
     load_json,
     load_yaml,
     write_json,
 )
+
+
 from refactor_cli.runtime_tools import (
     ensure_runtime_dependencies,
     run_formatter_on_file,
 )
-from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
-from refactor_cli.analysis.source_index import run_source_index; from refactor_cli.analysis.source_index import run_coderag_validate_only
-from refactor_cli.analysis.quality_report import write_quality_report
+
+
 from refactor_cli.transforms import (
     apply_unified_diff_to_text,
     build_after_tree_from_edit,
     run_tree_transition,
 )
+
+
 from refactor_cli.tree_codec import (
     load_tree_yaml,
     write_tree_yaml,
@@ -51,11 +66,23 @@ from refactor_cli.tree_codec import (
 
 
 DEFAULT_CONFIG = Path(".refactor/config.json")
+
+
 DEFAULT_TREE = Path(".refactor/tree.yaml")
+
+
 DEFAULT_TREE_PATCH = Path(".refactor/patches/latest.tree.patch.yaml")
+
+
 DEFAULT_TREE_EDIT = Path(".refactor/patches/latest.tree.edit.yaml")
+
+
 DEFAULT_APPLIED_PATCHES_DIR = Path(".refactor/patches/applied")
+
+
 DEFAULT_CANDIDATE_OUTPUT_DIR = Path(".refactor/analysis/candidates")
+
+
 DEFAULT_CANDIDATE_REPORT = DEFAULT_CANDIDATE_OUTPUT_DIR / "report.md"
 
 
@@ -583,6 +610,8 @@ def cmd_format(args: argparse.Namespace) -> int:
     return 0
 
 
+
+
 def cmd_apply_tree_patch(args: argparse.Namespace) -> int:
     ensure_runtime_dependencies(require_emend=args.move_backend == "emend")
 
@@ -748,428 +777,9 @@ def cmd_apply_tree_edit(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
-    settings = _resolve_candidate_phase_a_settings(args)
-    project_root = settings["project_root"]
-    if not project_root.exists():
-        raise FileNotFoundError(f"Project root not found: {project_root}")
-
-    cbm_binary = settings["cbm_binary"]
-    output_dir = settings["output_dir"]
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    source_index = run_source_index(
-        project_root=project_root,
-        cbm_binary=cbm_binary,
-        project_name=settings["project_name"],
-        config_path=settings["config_path"],
-        mode=settings["index_mode"],
-    )
-    write_json(output_dir / "source_index.json", source_index)
-    if not source_index.get("ok"):
-        print("CANDIDATE PHASE A FAILED at source_index")
-        print(f"  details: {output_dir / 'source_index.json'}")
-        return 1
-
-    project_name = source_index["project_name"]
-    scope_path = settings["scope_path"]
-    scope_qn_prefix = settings["scope_qn_prefix"]
-    exclude_qn_substrings = settings["exclude_qn_substrings"]
-
-    dependency = collect_dependency_graph(
-        cbm_binary=cbm_binary,
-        project_root=project_root,
-        project_name=project_name,
-        max_rows=settings["max_rows"],
-        scope_qn_prefix=scope_qn_prefix or None,
-        exclude_qn_substrings=exclude_qn_substrings,
-    )
-    write_json(output_dir / "dependency_graph.json", dependency)
-
-    terms = settings["semantic_terms"]
-    semantic = collect_semantic_retrieval(
-        cbm_binary=cbm_binary,
-        project_root=project_root,
-        project_name=project_name,
-        semantic_terms=terms,
-        limit=settings["semantic_limit"],
-        file_pattern=f"{scope_path}/*" if scope_path else None,
-    )
-    write_json(output_dir / "semantic_retrieval.json", semantic)
-
-    architecture = collect_architecture_report(
-        cbm_binary=cbm_binary,
-        project_root=project_root,
-        project_name=project_name,
-        aspects=["overview"],
-        scope_path=scope_path or None,
-    )
-    write_json(output_dir / "architecture_report.json", architecture)
-
-    coderag_result = None
-    if settings["include_coderag_validate"]:
-        coderag_path = settings["coderag_path"]
-        if coderag_path.exists():
-            coderag_result = run_coderag_validate_only(
-                coderag_root=coderag_path,
-                project_root=project_root,
-            )
-            write_json(output_dir / "coderag_validate.json", coderag_result)
-        else:
-            coderag_result = {
-                "provider": "CodeRAG",
-                "ok": False,
-                "error": f"CodeRAG path not found: {coderag_path}",
-            }
-            write_json(output_dir / "coderag_validate.json", coderag_result)
-
-    summary = {
-        "project_root": str(project_root),
-        "project_name": project_name,
-        "cbm_binary": str(cbm_binary),
-        "output_dir": str(output_dir),
-        "scope": {
-            "scope_path": scope_path,
-            "scope_qn_prefix": scope_qn_prefix,
-            "exclude_qn_substrings": exclude_qn_substrings,
-            "semantic_query_profiles": settings["semantic_query_profiles"],
-            "daemon_mode": "out_of_scope",
-        },
-        "modules": {
-            "source_index": source_index.get("ok", False),
-            "dependency_graph": dependency.get("ok", False),
-            "semantic_retrieval": semantic.get("ok", False),
-            "architecture_report": architecture.get("ok", False),
-            "coderag_validate": None
-            if coderag_result is None
-            else coderag_result.get("ok", False),
-        },
-    }
-    write_json(output_dir / "summary.json", summary)
-
-    print("CANDIDATE PHASE A COMPLETE")
-    print(f"  project: {project_name}")
-    print(f"  output: {output_dir}")
-    for key, ok in summary["modules"].items():
-        if ok is None:
-            print(f"  - {key}: SKIP")
-            continue
-        marker = "OK" if ok else "FAIL"
-        print(f"  - {key}: {marker}")
-
-    return 0
-
-
-def cmd_candidate_report(args: argparse.Namespace) -> int:
-    settings = _resolve_candidate_report_settings(args)
-    input_dir = settings["input_dir"]
-    if not input_dir.exists():
-        raise FileNotFoundError(f"Input directory not found: {input_dir}")
-
-    output_path = settings["output_path"]
-    report = build_candidate_report(
-        input_dir=input_dir,
-        output_path=output_path,
-        scope_path=settings["scope_path"],
-        project_root=settings["project_root"],
-        cbm_binary_path=settings["cbm_binary"],
-        include_demo_artifacts=settings["include_demo_artifacts"],
-        semantic_query_profiles=settings["semantic_query_profiles"],
-    )
-
-    print("CANDIDATE REPORT WRITTEN")
-    print(f"  input: {input_dir}")
-    print(f"  output: {output_path}")
-    print(f"  lines: {len(report.splitlines())}")
-    return 0
-
-
-def cmd_candidate_search(args: argparse.Namespace) -> int:
-    settings = _resolve_candidate_search_settings(args)
-    flags: dict[str, Any] = {
-        "project": settings["project_name"],
-        "limit": settings["limit"],
-        "format": settings["format"],
-    }
-    if settings["semantic_query"]:
-        flags["semantic_query"] = settings["semantic_query"]
-    if settings["label"]:
-        flags["label"] = settings["label"]
-    if settings["file_pattern"]:
-        flags["file_pattern"] = settings["file_pattern"]
-    flags.update(settings.get("cbm_options", {}))
-
-    result = run_cbm_tool(
-        settings["cbm_binary"],
-        "search_graph",
-        flags,
-        cwd=settings["project_root"],
-    )
-    if not result.get("ok"):
-        print("CANDIDATE SEARCH FAILED")
-        print(f"  project: {settings['project_name']}")
-        print(f"  command: {' '.join(result.get('command', []))}")
-        if result.get("stderr"):
-            print(result["stderr"].strip())
-        return 1
-
-    profile = settings.get("profile")
-    if profile is not None:
-        print(f"PROFILE: {profile.get('name', '')}")
-    print("CANDIDATE SEARCH COMPLETE")
-    print(f"  project: {settings['project_name']}")
-    print(f"  scope: {settings.get('file_pattern') or 'none'}")
-    print(f"  query: {settings['semantic_query']}")
-    print(f"  label: {settings.get('label') or 'any'}")
-    print(f"  limit: {settings['limit']}")
-    print(json.dumps(result.get("payload", {}), ensure_ascii=True))
-    return 0
-
-
-def cmd_quality_report(args: argparse.Namespace) -> int:
-    config_path = Path(args.config)
-    config = _load_optional_config(config_path)
-    analysis = _candidate_analysis_config(config)
-    project_root = _resolve_optional_project_root(args.project_root, config_path, config)
-    scope_value = _config_or_default(args.scope_path, analysis.get("scope_path", "src"))
-    scope_path = Path(scope_value)
-    if not scope_path.is_absolute():
-        scope_path = (project_root / scope_path).resolve()
-    output_dir = Path(args.output_dir or ".refactor/analysis/quality")
-    if not output_dir.is_absolute():
-        output_dir = (project_root / output_dir).resolve()
-    payload = write_quality_report(
-        project_root=project_root,
-        scope_path=scope_path,
-        json_path=output_dir / "quality.json",
-        markdown_path=output_dir / "quality.md",
-    )
-    print("QUALITY REPORT WRITTEN")
-    print(f"  scope: {scope_path}")
-    print(f"  modules: {len(payload['modules'])}")
-    print(f"  move candidates: {len(payload['move_candidates'])}")
-    print(f"  duplicate groups: {len(payload['duplicate_groups'])}")
-    print(f"  unused functions: {len(payload['unused_functions'])}")
-    return 0
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Project-agnostic structural refactoring tool"
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    init_parser = subparsers.add_parser(
-        "init", help="Create default .refactor/config.json"
-    )
-    init_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    init_parser.add_argument("--force", action="store_true")
-    init_parser.set_defaults(func=cmd_init)
-
-    files_parser = subparsers.add_parser(
-        "files", help="List relevant Python files from config"
-    )
-    files_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    files_parser.set_defaults(func=cmd_files)
-
-    tree_parser = subparsers.add_parser(
-        "tree", help="Generate and persist project structural tree"
-    )
-    tree_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    tree_parser.add_argument("--output", default=str(DEFAULT_TREE))
-    tree_parser.add_argument("--print", action="store_true")
-    tree_parser.set_defaults(func=cmd_tree)
-
-    format_parser = subparsers.add_parser(
-        "format", help="Format all discovered Python files using ruff"
-    )
-    format_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    format_parser.set_defaults(func=cmd_format)
-
-    apply_tree_patch_parser = subparsers.add_parser(
-        "apply-tree-patch",
-        help="Apply a tree diff patch end-to-end (temp tree, internal change request, apply, verify, cleanup)",
-    )
-    apply_tree_patch_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    apply_tree_patch_parser.add_argument("--tree", default=str(DEFAULT_TREE))
-    apply_tree_patch_parser.add_argument(
-        "--tree-patch", default=str(DEFAULT_TREE_PATCH)
-    )
-    apply_tree_patch_parser.add_argument("--keep-patch", action="store_true")
-    apply_tree_patch_parser.add_argument(
-        "--applied-patches-dir", default=str(DEFAULT_APPLIED_PATCHES_DIR)
-    )
-    apply_tree_patch_parser.add_argument(
-        "--move-backend",
-        choices=["internal", "emend"],
-        default="emend",
-        help="Backend used for symbol moves detected from the tree patch",
-    )
-    apply_tree_patch_parser.set_defaults(func=cmd_apply_tree_patch)
-
-    apply_tree_edit_parser = subparsers.add_parser(
-        "apply-tree-edit",
-        help="Apply a line-number-free tree edit YAML (moves/delete_files) and reuse the same transition workflow",
-    )
-    apply_tree_edit_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    apply_tree_edit_parser.add_argument("--tree", default=str(DEFAULT_TREE))
-    apply_tree_edit_parser.add_argument("--tree-edit", default=str(DEFAULT_TREE_EDIT))
-    apply_tree_edit_parser.add_argument("--keep-patch", action="store_true")
-    apply_tree_edit_parser.add_argument(
-        "--applied-patches-dir", default=str(DEFAULT_APPLIED_PATCHES_DIR)
-    )
-    apply_tree_edit_parser.add_argument(
-        "--move-backend",
-        choices=["internal", "emend"],
-        default="emend",
-        help="Backend used for symbol moves detected from the tree edit",
-    )
-    apply_tree_edit_parser.set_defaults(func=cmd_apply_tree_edit)
-
-    phase_a_parser = subparsers.add_parser(
-        "candidate-phase-a",
-        help="Run adapter-based candidate analysis modules and write normalized artifacts",
-    )
-    phase_a_parser.add_argument("--project-root", default=None)
-    phase_a_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    phase_a_parser.add_argument("--project-name", default=None)
-    phase_a_parser.add_argument("--cbm-binary", default=None)
-    phase_a_parser.add_argument("--index-mode", default=None)
-    phase_a_parser.add_argument("--max-rows", type=int, default=None)
-    phase_a_parser.add_argument(
-        "--semantic-terms",
-        default=None,
-    )
-    phase_a_parser.add_argument("--semantic-limit", type=int, default=None)
-    phase_a_parser.add_argument(
-        "--scope-path",
-        default=None,
-        help="File path scope used for semantic and architecture queries",
-    )
-    phase_a_parser.add_argument(
-        "--scope-qn-prefix",
-        default=None,
-        help="Qualified-name prefix used to scope dependency edge extraction",
-    )
-    phase_a_parser.add_argument(
-        "--exclude-qn-substring",
-        action="append",
-        default=None,
-        help="Substring filter applied to dependency source/target qualified names (repeatable)",
-    )
-    phase_a_parser.add_argument(
-        "--include-coderag-validate",
-        action="store_true",
-        default=None,
-    )
-    phase_a_parser.add_argument(
-        "--coderag-path",
-        default=None,
-    )
-    phase_a_parser.add_argument(
-        "--output-dir",
-        default=None,
-    )
-    phase_a_parser.set_defaults(func=cmd_candidate_phase_a)
-
-    candidate_report_parser = subparsers.add_parser(
-        "candidate-report",
-        help="Render candidate analysis artifacts as Markdown plus Mermaid visualizations",
-    )
-    candidate_report_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    candidate_report_parser.add_argument(
-        "--input-dir",
-        default=None,
-    )
-    candidate_report_parser.add_argument(
-        "--output",
-        default=None,
-    )
-    candidate_report_parser.add_argument(
-        "--scope-path",
-        default=None,
-    )
-    candidate_report_parser.add_argument(
-        "--project-root",
-        default=None,
-    )
-    candidate_report_parser.add_argument(
-        "--cbm-binary",
-        default=None,
-    )
-    demo_group = candidate_report_parser.add_mutually_exclusive_group()
-    demo_group.add_argument(
-        "--include-demo-artifacts",
-        dest="include_demo_artifacts",
-        action="store_true",
-        help="Include example semantic searches and search-hit diagrams in the report",
-    )
-    demo_group.add_argument(
-        "--no-demo-artifacts",
-        dest="include_demo_artifacts",
-        action="store_false",
-        help="Suppress example semantic searches and search-hit diagrams in the report",
-    )
-    candidate_report_parser.set_defaults(include_demo_artifacts=None)
-    candidate_report_parser.set_defaults(func=cmd_candidate_report)
-
-    candidate_search_parser = subparsers.add_parser(
-        "candidate-search",
-        help="Run CBM search_graph with defaults from candidate_analysis config",
-    )
-    candidate_search_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    candidate_search_parser.add_argument("--project-root", default=None)
-    candidate_search_parser.add_argument("--project-name", default=None)
-    candidate_search_parser.add_argument("--cbm-binary", default=None)
-    candidate_search_parser.add_argument(
-        "--profile",
-        default=None,
-        help="Name of a configured semantic_query_profile to run",
-    )
-    candidate_search_parser.add_argument(
-        "--semantic-query",
-        default=None,
-        help="Semantic terms as JSON array or comma-separated list; overrides profile/config",
-    )
-    candidate_search_parser.add_argument("--scope-path", default=None)
-    candidate_search_parser.add_argument(
-        "--scope-qn-prefix",
-        default=None,
-        help="Qualified-name prefix used to keep dependency searches inside the configured package scope",
-    )
-    candidate_search_parser.add_argument(
-        "--file-pattern",
-        default=None,
-        help="CBM file pattern; defaults to '<scope-path>/*'",
-    )
-    candidate_search_parser.add_argument("--label", default=None)
-    candidate_search_parser.add_argument("--limit", type=int, default=None)
-    candidate_search_parser.add_argument(
-        "--format",
-        default="json",
-        choices=["json", "tree"],
-    )
-    candidate_search_parser.add_argument(
-        "--cbm-options",
-        default=None,
-        help="Raw CBM flags tail as '--flag value --flag2 value2'; added after wrapper defaults",
-    )
-    candidate_search_parser.set_defaults(func=cmd_candidate_search)
-
-    quality_parser = subparsers.add_parser(
-        "quality-report",
-        help="Analyze module dependencies, cycles, complexity, duplicates, unused functions, and move candidates",
-    )
-    quality_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    quality_parser.add_argument("--project-root", default=None)
-    quality_parser.add_argument("--scope-path", default=None)
-    quality_parser.add_argument("--output-dir", default=None)
-    quality_parser.set_defaults(func=cmd_quality_report)
-
-    return parser
-
-
 def main() -> int:
+    from refactor_cli.cli.parser import build_parser
+
     parser = build_parser()
     args = parser.parse_args()
     return args.func(args)

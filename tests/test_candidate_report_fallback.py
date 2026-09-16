@@ -26,7 +26,7 @@ def test_fallback_dependency_rows_are_non_empty_for_package():
 
     assert rows
     assert any(
-        source.endswith("__init__") and target.endswith("candidate_report")
+        source.endswith("cli.commands") and target.endswith("candidate_report")
         for source, _, target in rows
     )
 

@@ -34,11 +34,6 @@ files:
   - FunctionDef cmd_format
   - FunctionDef cmd_apply_tree_patch
   - FunctionDef cmd_apply_tree_edit
-  - FunctionDef cmd_candidate_phase_a
-  - FunctionDef cmd_candidate_report
-  - FunctionDef cmd_candidate_search
-  - FunctionDef cmd_quality_report
-  - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
   src/refactor_cli/analysis/architecture_report.py:
@@ -128,6 +123,13 @@ files:
   - FunctionDef _example_edge_lines
   - FunctionDef _line_list
   - FunctionDef build_candidate_report
+  src/refactor_cli/cli/commands.py:
+  - FunctionDef cmd_candidate_phase_a
+  - FunctionDef cmd_candidate_report
+  - FunctionDef cmd_candidate_search
+  - FunctionDef cmd_quality_report
+  src/refactor_cli/cli/parser.py:
+  - FunctionDef build_parser
   src/refactor_cli/discovery.py:
   - FunctionDef load_config
   - FunctionDef resolve_project_root

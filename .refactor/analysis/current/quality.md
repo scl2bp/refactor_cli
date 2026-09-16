@@ -4,59 +4,59 @@ Scope: `/workspace/refactor_cli/src/refactor_cli`
 
 ## Move Candidates
 
-- `refactor_cli`: high fan-out (12)
+- `refactor_cli.cli.commands`: high fan-out (10)
+- `refactor_cli`: high fan-out (7)
 - `refactor_cli.transforms`: high fan-out (4)
 - `refactor_cli.analysis.source_index`: high fan-out (2)
 - `refactor_cli.candidate_report`: high fan-out (2)
+- `refactor_cli.cli.parser`: high fan-out (2)
 
 ## Module Dependencies
 
 | Module | Fan-in | Fan-out | Imports |
 |---|---:|---:|---|
-| `refactor_cli` | 1 | 12 | `refactor_cli.analysis.architecture_report`, `refactor_cli.analysis.candidate_tools`, `refactor_cli.analysis.dependency_graph`, `refactor_cli.analysis.quality_report`, `refactor_cli.analysis.semantic_retrieval`, `refactor_cli.analysis.source_index`, `refactor_cli.candidate_report`, `refactor_cli.discovery`, `refactor_cli.file_io`, `refactor_cli.runtime_tools`, `refactor_cli.transforms`, `refactor_cli.tree_codec` |
+| `refactor_cli` | 3 | 7 | `refactor_cli.analysis.candidate_tools`, `refactor_cli.cli.parser`, `refactor_cli.discovery`, `refactor_cli.file_io`, `refactor_cli.runtime_tools`, `refactor_cli.transforms`, `refactor_cli.tree_codec` |
 | `refactor_cli.__main__` | 0 | 1 | `refactor_cli` |
 | `refactor_cli.analysis.architecture_report` | 1 | 1 | `refactor_cli.analysis.candidate_tools` |
-| `refactor_cli.analysis.candidate_tools` | 6 | 0 | - |
+| `refactor_cli.analysis.candidate_tools` | 7 | 0 | - |
 | `refactor_cli.analysis.dependency_graph` | 1 | 1 | `refactor_cli.analysis.candidate_tools` |
 | `refactor_cli.analysis.quality_report` | 1 | 0 | - |
 | `refactor_cli.analysis.semantic_retrieval` | 1 | 1 | `refactor_cli.analysis.candidate_tools` |
 | `refactor_cli.analysis.source_index` | 1 | 2 | `refactor_cli.analysis.candidate_tools`, `refactor_cli.discovery` |
 | `refactor_cli.candidate_report` | 1 | 2 | `refactor_cli.analysis.candidate_tools`, `refactor_cli.file_io` |
+| `refactor_cli.cli.commands` | 1 | 10 | `refactor_cli`, `refactor_cli.analysis.architecture_report`, `refactor_cli.analysis.candidate_tools`, `refactor_cli.analysis.dependency_graph`, `refactor_cli.analysis.quality_report`, `refactor_cli.analysis.semantic_retrieval`, `refactor_cli.analysis.source_index`, `refactor_cli.candidate_report`, `refactor_cli.file_io`, `refactor_cli.runtime_tools` |
+| `refactor_cli.cli.parser` | 1 | 2 | `refactor_cli`, `refactor_cli.cli.commands` |
 | `refactor_cli.discovery` | 3 | 1 | `refactor_cli.file_io` |
-| `refactor_cli.file_io` | 4 | 0 | - |
-| `refactor_cli.runtime_tools` | 3 | 0 | - |
+| `refactor_cli.file_io` | 5 | 0 | - |
+| `refactor_cli.runtime_tools` | 4 | 0 | - |
 | `refactor_cli.safeguards` | 1 | 1 | `refactor_cli.runtime_tools` |
 | `refactor_cli.transforms` | 1 | 4 | `refactor_cli.discovery`, `refactor_cli.runtime_tools`, `refactor_cli.safeguards`, `refactor_cli.tree_codec` |
 | `refactor_cli.tree_codec` | 2 | 1 | `refactor_cli.file_io` |
 
 ## Cycles
 
-- None
+- refactor_cli -> refactor_cli.cli.parser
+- refactor_cli -> refactor_cli.cli.commands -> refactor_cli.cli.parser
 
 ## Dependency Paths
 
-- refactor_cli -> refactor_cli.analysis.architecture_report -> refactor_cli.analysis.candidate_tools
-- refactor_cli -> refactor_cli.analysis.dependency_graph -> refactor_cli.analysis.candidate_tools
-- refactor_cli -> refactor_cli.analysis.semantic_retrieval -> refactor_cli.analysis.candidate_tools
-- refactor_cli -> refactor_cli.analysis.source_index -> refactor_cli.analysis.candidate_tools
-- refactor_cli -> refactor_cli.analysis.source_index -> refactor_cli.discovery
-- refactor_cli -> refactor_cli.candidate_report -> refactor_cli.analysis.candidate_tools
-- refactor_cli -> refactor_cli.candidate_report -> refactor_cli.file_io
+- refactor_cli -> refactor_cli.cli.parser -> refactor_cli.cli.commands
 - refactor_cli -> refactor_cli.discovery -> refactor_cli.file_io
 - refactor_cli -> refactor_cli.transforms -> refactor_cli.discovery
 - refactor_cli -> refactor_cli.transforms -> refactor_cli.runtime_tools
+- refactor_cli -> refactor_cli.transforms -> refactor_cli.safeguards
+- refactor_cli -> refactor_cli.transforms -> refactor_cli.tree_codec
+- refactor_cli -> refactor_cli.tree_codec -> refactor_cli.file_io
+- refactor_cli.__main__ -> refactor_cli -> refactor_cli.analysis.candidate_tools
+- refactor_cli.__main__ -> refactor_cli -> refactor_cli.cli.parser
+- refactor_cli.__main__ -> refactor_cli -> refactor_cli.discovery
 
 ## Dependency Diagram
 
 ```mermaid
 flowchart LR
-    refactor_cli --> refactor_cli_analysis_architecture_report
     refactor_cli --> refactor_cli_analysis_candidate_tools
-    refactor_cli --> refactor_cli_analysis_dependency_graph
-    refactor_cli --> refactor_cli_analysis_quality_report
-    refactor_cli --> refactor_cli_analysis_semantic_retrieval
-    refactor_cli --> refactor_cli_analysis_source_index
-    refactor_cli --> refactor_cli_candidate_report
+    refactor_cli --> refactor_cli_cli_parser
     refactor_cli --> refactor_cli_discovery
     refactor_cli --> refactor_cli_file_io
     refactor_cli --> refactor_cli_runtime_tools
@@ -70,6 +70,18 @@ flowchart LR
     refactor_cli_analysis_source_index --> refactor_cli_discovery
     refactor_cli_candidate_report --> refactor_cli_analysis_candidate_tools
     refactor_cli_candidate_report --> refactor_cli_file_io
+    refactor_cli_cli_commands --> refactor_cli
+    refactor_cli_cli_commands --> refactor_cli_analysis_architecture_report
+    refactor_cli_cli_commands --> refactor_cli_analysis_candidate_tools
+    refactor_cli_cli_commands --> refactor_cli_analysis_dependency_graph
+    refactor_cli_cli_commands --> refactor_cli_analysis_quality_report
+    refactor_cli_cli_commands --> refactor_cli_analysis_semantic_retrieval
+    refactor_cli_cli_commands --> refactor_cli_analysis_source_index
+    refactor_cli_cli_commands --> refactor_cli_candidate_report
+    refactor_cli_cli_commands --> refactor_cli_file_io
+    refactor_cli_cli_commands --> refactor_cli_runtime_tools
+    refactor_cli_cli_parser --> refactor_cli
+    refactor_cli_cli_parser --> refactor_cli_cli_commands
     refactor_cli_discovery --> refactor_cli_file_io
     refactor_cli_safeguards --> refactor_cli_runtime_tools
     refactor_cli_transforms --> refactor_cli_discovery
@@ -86,6 +98,8 @@ flowchart LR
     refactor_cli_analysis_semantic_retrieval[refactor_cli.analysis.semantic_retrieval]
     refactor_cli_analysis_source_index[refactor_cli.analysis.source_index]
     refactor_cli_candidate_report[refactor_cli.candidate_report]
+    refactor_cli_cli_commands[refactor_cli.cli.commands]
+    refactor_cli_cli_parser[refactor_cli.cli.parser]
     refactor_cli_discovery[refactor_cli.discovery]
     refactor_cli_file_io[refactor_cli.file_io]
     refactor_cli_runtime_tools[refactor_cli.runtime_tools]
@@ -105,6 +119,8 @@ flowchart LR
 - `refactor_cli.analysis.semantic_retrieval`: [src/refactor_cli/analysis/semantic_retrieval.py](src/refactor_cli/analysis/semantic_retrieval.py#L1)
 - `refactor_cli.analysis.source_index`: [src/refactor_cli/analysis/source_index.py](src/refactor_cli/analysis/source_index.py#L1)
 - `refactor_cli.candidate_report`: [src/refactor_cli/candidate_report.py](src/refactor_cli/candidate_report.py#L1)
+- `refactor_cli.cli.commands`: [src/refactor_cli/cli/commands.py](src/refactor_cli/cli/commands.py#L1)
+- `refactor_cli.cli.parser`: [src/refactor_cli/cli/parser.py](src/refactor_cli/cli/parser.py#L1)
 - `refactor_cli.discovery`: [src/refactor_cli/discovery.py](src/refactor_cli/discovery.py#L1)
 - `refactor_cli.file_io`: [src/refactor_cli/file_io.py](src/refactor_cli/file_io.py#L1)
 - `refactor_cli.runtime_tools`: [src/refactor_cli/runtime_tools.py](src/refactor_cli/runtime_tools.py#L1)
@@ -120,10 +136,10 @@ flowchart LR
 - `src/refactor_cli/candidate_report.py:589` `_fallback_dependency_rows`: 17
 - `src/refactor_cli/transforms.py:449` `run_tree_transition`: 17
 - `src/refactor_cli/candidate_report.py:630` `_search_hit_dependency_rows`: 15
-- `src/refactor_cli/__init__.py:586` `cmd_apply_tree_patch`: 14
+- `src/refactor_cli/__init__.py:615` `cmd_apply_tree_patch`: 14
 - `src/refactor_cli/analysis/quality_report.py:94` `_unused_functions`: 14
-- `src/refactor_cli/__init__.py:342` `_resolve_candidate_search_settings`: 13
-- `src/refactor_cli/__init__.py:666` `cmd_apply_tree_edit`: 13
+- `src/refactor_cli/__init__.py:369` `_resolve_candidate_search_settings`: 13
+- `src/refactor_cli/__init__.py:695` `cmd_apply_tree_edit`: 13
 
 ## Duplicates
 
@@ -131,19 +147,14 @@ flowchart LR
 
 ## Unused Functions
 
-- `src/refactor_cli/__init__.py:423` `choose_operation`
-- `src/refactor_cli/__init__.py:458` `extract_paths_from_tree_patch`
-- `src/refactor_cli/__init__.py:473` `cmd_init`
-- `src/refactor_cli/__init__.py:534` `cmd_files`
-- `src/refactor_cli/__init__.py:547` `cmd_tree`
-- `src/refactor_cli/__init__.py:563` `cmd_format`
-- `src/refactor_cli/__init__.py:586` `cmd_apply_tree_patch`
-- `src/refactor_cli/__init__.py:666` `cmd_apply_tree_edit`
-- `src/refactor_cli/__init__.py:751` `cmd_candidate_phase_a`
-- `src/refactor_cli/__init__.py:863` `cmd_candidate_report`
-- `src/refactor_cli/__init__.py:887` `cmd_candidate_search`
-- `src/refactor_cli/__init__.py:929` `cmd_quality_report`
-- `src/refactor_cli/__init__.py:956` `build_parser`
+- `src/refactor_cli/__init__.py:450` `choose_operation`
+- `src/refactor_cli/__init__.py:485` `extract_paths_from_tree_patch`
+- `src/refactor_cli/__init__.py:500` `cmd_init`
+- `src/refactor_cli/__init__.py:561` `cmd_files`
+- `src/refactor_cli/__init__.py:574` `cmd_tree`
+- `src/refactor_cli/__init__.py:590` `cmd_format`
+- `src/refactor_cli/__init__.py:615` `cmd_apply_tree_patch`
+- `src/refactor_cli/__init__.py:695` `cmd_apply_tree_edit`
 - `src/refactor_cli/analysis/architecture_report.py:7` `collect_architecture_report`
 - `src/refactor_cli/analysis/candidate_tools.py:8` `resolve_cbm_binary`
 - `src/refactor_cli/analysis/candidate_tools.py:52` `run_cbm_tool`
@@ -155,6 +166,11 @@ flowchart LR
 - `src/refactor_cli/analysis/source_index.py:20` `run_source_index`
 - `src/refactor_cli/analysis/source_index.py:86` `run_coderag_validate_only`
 - `src/refactor_cli/candidate_report.py:930` `build_candidate_report`
+- `src/refactor_cli/cli/commands.py:23` `cmd_candidate_phase_a`
+- `src/refactor_cli/cli/commands.py:135` `cmd_candidate_report`
+- `src/refactor_cli/cli/commands.py:159` `cmd_candidate_search`
+- `src/refactor_cli/cli/commands.py:201` `cmd_quality_report`
+- `src/refactor_cli/cli/parser.py:21` `build_parser`
 - `src/refactor_cli/discovery.py:8` `load_config`
 - `src/refactor_cli/discovery.py:16` `resolve_project_root`
 - `src/refactor_cli/discovery.py:21` `discover_python_files`
