@@ -154,6 +154,8 @@ def collect_quality_report(*, project_root: Path, scope_path: Path) -> dict[str,
         "parse_errors": parse_errors,
         "modules": module_rows,
         "cycles": _cycles(edges),
+        "dependency_paths": _dependency_paths(edges),
+        "mermaid": _mermaid(edges),
         "complexity": blocks[:20],
         "duplicate_groups": duplicate_groups,
         "unused_functions": _unused_functions(trees, relative),
@@ -177,13 +179,49 @@ def _cycles(edges: dict[str, set[str]]) -> list[list[str]]:
     return cycles
 
 
+def _dependency_paths(edges: dict[str, set[str]], limit: int = 10) -> list[list[str]]:
+    paths: list[list[str]] = []
+    for source in sorted(edges):
+        queue: deque[list[str]] = deque([[source]])
+        while queue and len(paths) < limit:
+            path = queue.popleft()
+            if len(path) > 2:
+                paths.append(path)
+                continue
+            for target in sorted(edges[path[-1]]):
+                if target not in path:
+                    queue.append([*path, target])
+    return paths
+
+
+def _mermaid(edges: dict[str, set[str]]) -> str:
+    lines = ["flowchart LR"]
+    for source in sorted(edges):
+        for target in sorted(edges[source]):
+            lines.append(
+                f"    {source.replace('.', '_')} --> {target.replace('.', '_')}"
+            )
+    for module in sorted(edges):
+        lines.append(f"    {module.replace('.', '_')}[{module}]")
+    return "\n".join(lines)
+
+
 def render_quality_report(payload: dict[str, Any]) -> str:
     lines = [f"# Refactor Quality Report: `{payload['package']}`", "", f"Scope: `{payload['scope']}`", ""]
     lines += ["## Move Candidates", ""]
     lines += [f"- `{row['module']}`: {row['reason']} ({row['fan_out']})" for row in payload["move_candidates"]] or ["- None"]
     lines += ["", "## Module Dependencies", "", "| Module | Fan-in | Fan-out | Imports |", "|---|---:|---:|---|"]
     lines += [f"| `{row['module']}` | {row['fan_in']} | {row['fan_out']} | {', '.join(f'`{item}`' for item in row['imports']) or '-'} |" for row in payload["modules"]]
-    lines += ["", "## Cycles", ""] + [f"- {' -> '.join(row)}" for row in payload["cycles"]] or ["- None"]
+    lines += ["", "## Cycles", ""]
+    lines += [f"- {' -> '.join(row)}" for row in payload["cycles"]] or ["- None"]
+    lines += ["", "## Dependency Paths", ""]
+    lines += [f"- {' -> '.join(row)}" for row in payload["dependency_paths"]] or ["- None"]
+    lines += ["", "## Dependency Diagram", "", "```mermaid", payload["mermaid"], "```"]
+    lines += ["", "## Module Sources", ""]
+    lines += [
+        f"- `{row['module']}`: [{row['file']}]({row['file']}#L1)"
+        for row in payload["modules"]
+    ]
     lines += ["", "## Complexity Hotspots", ""] + [f"- `{row['file']}:{row['line']}` `{row['name']}`: {row['complexity']}" for row in payload["complexity"][:10]]
     lines += ["", "## Duplicates", ""]
     if payload["duplicate_groups"]:
@@ -194,7 +232,11 @@ def render_quality_report(payload: dict[str, Any]) -> str:
             lines.append(f"- {locations}")
     else:
         lines.append("- None")
-    lines += ["", "## Unused Functions", ""] + [f"- `{item['file']}:{item['line']}` `{item['name']}`" for item in payload["unused_functions"]] or ["- None"]
+    lines += ["", "## Unused Functions", ""]
+    lines += [
+        f"- `{item['file']}:{item['line']}` `{item['name']}`"
+        for item in payload["unused_functions"]
+    ] or ["- None"]
     return "\n".join(lines) + "\n"
 
 

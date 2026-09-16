@@ -1,0 +1,560 @@
+{
+  "scope": "/workspace/refactor_cli/vendor/upstream_analysis",
+  "package": "upstream_analysis",
+  "python_files": 4,
+  "parse_errors": [
+    "vendor/upstream_analysis/find_unused.py"
+  ],
+  "modules": [
+    {
+      "module": "upstream_analysis.find_duplicates",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "fan_in": 0,
+      "fan_out": 0,
+      "imports": []
+    },
+    {
+      "module": "upstream_analysis.internal_module_dependencies",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "fan_in": 0,
+      "fan_out": 0,
+      "imports": []
+    },
+    {
+      "module": "upstream_analysis.quality_gate_report",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "fan_in": 0,
+      "fan_out": 0,
+      "imports": []
+    }
+  ],
+  "cycles": [],
+  "dependency_paths": [],
+  "mermaid": "flowchart LR\n    upstream_analysis_find_duplicates[upstream_analysis.find_duplicates]\n    upstream_analysis_internal_module_dependencies[upstream_analysis.internal_module_dependencies]\n    upstream_analysis_quality_gate_report[upstream_analysis.quality_gate_report]",
+  "complexity": [
+    {
+      "name": "render_report",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 846,
+      "complexity": 49
+    },
+    {
+      "name": "decide_gate",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 611,
+      "complexity": 44
+    },
+    {
+      "name": "render_detailed_markdown_report",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 630,
+      "complexity": 37
+    },
+    {
+      "name": "main",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1320,
+      "complexity": 32
+    },
+    {
+      "name": "collect_graph_metadata",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 114,
+      "complexity": 20
+    },
+    {
+      "name": "graph_from_ast",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 166,
+      "complexity": 18
+    },
+    {
+      "name": "_ratchet_baseline_individual_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1245,
+      "complexity": 16
+    },
+    {
+      "name": "main",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 420,
+      "complexity": 14
+    },
+    {
+      "name": "_interface_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 369,
+      "complexity": 13
+    },
+    {
+      "name": "full_delta_report",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 353,
+      "complexity": 11
+    },
+    {
+      "name": "_lcom1",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 274,
+      "complexity": 11
+    },
+    {
+      "name": "scan_high_param_functions",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 300,
+      "complexity": 10
+    },
+    {
+      "name": "render_markdown_report",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 512,
+      "complexity": 10
+    },
+    {
+      "name": "main",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 856,
+      "complexity": 10
+    },
+    {
+      "name": "_iter_py_files",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 180,
+      "complexity": 9
+    },
+    {
+      "name": "collect_ast_clones",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 222,
+      "complexity": 9
+    },
+    {
+      "name": "strongly_connected_components",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 248,
+      "complexity": 9
+    },
+    {
+      "name": "_iter_py_files",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 135,
+      "complexity": 9
+    },
+    {
+      "name": "_cohesion_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 302,
+      "complexity": 9
+    },
+    {
+      "name": "_is_decorator_registered",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 354,
+      "complexity": 9
+    }
+  ],
+  "duplicate_groups": [
+    [
+      {
+        "name": "_rel",
+        "file": "vendor/upstream_analysis/find_duplicates.py",
+        "line": 202,
+        "size": 47
+      },
+      {
+        "name": "_rel",
+        "file": "vendor/upstream_analysis/quality_gate_report.py",
+        "line": 157,
+        "size": 47
+      }
+    ]
+  ],
+  "unused_functions": [
+    {
+      "name": "_strip_docstring",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 54
+    },
+    {
+      "name": "_body_source",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 61
+    },
+    {
+      "name": "_normalize_tokens",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 79
+    },
+    {
+      "name": "_similarity",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 111
+    },
+    {
+      "name": "collect_functions",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 121
+    },
+    {
+      "name": "find_duplicates",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 142
+    },
+    {
+      "name": "diff_bodies",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 161
+    },
+    {
+      "name": "_iter_py_files",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 180
+    },
+    {
+      "name": "_rel",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 202
+    },
+    {
+      "name": "_normalized_ast_dump",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 209
+    },
+    {
+      "name": "collect_ast_clones",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 222
+    },
+    {
+      "name": "_load_snapshot",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 272
+    },
+    {
+      "name": "_key",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 282
+    },
+    {
+      "name": "_is_decorator_registered",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 290
+    },
+    {
+      "name": "scan_high_param_functions",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 300
+    },
+    {
+      "name": "scan_unused_functions",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 328
+    },
+    {
+      "name": "full_delta_report",
+      "file": "vendor/upstream_analysis/find_duplicates.py",
+      "line": 353
+    },
+    {
+      "name": "build_parser",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 22
+    },
+    {
+      "name": "iter_python_files",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 80
+    },
+    {
+      "name": "module_name_for_file",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 86
+    },
+    {
+      "name": "resolve_relative_module",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 93
+    },
+    {
+      "name": "nearest_known_module",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 103
+    },
+    {
+      "name": "collect_graph_metadata",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 114
+    },
+    {
+      "name": "graph_from_ast",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 166
+    },
+    {
+      "name": "graph_from_grimp",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 211
+    },
+    {
+      "name": "build_graph",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 230
+    },
+    {
+      "name": "invert_edges",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 240
+    },
+    {
+      "name": "strongly_connected_components",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 248
+    },
+    {
+      "name": "shortest_path",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 288
+    },
+    {
+      "name": "shortest_group_path",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 317
+    },
+    {
+      "name": "direct_group_edges",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 338
+    },
+    {
+      "name": "cycle_nodes_for_groups",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 357
+    },
+    {
+      "name": "cycle_group_path",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 371
+    },
+    {
+      "name": "representative_cycle",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 396
+    },
+    {
+      "name": "module_group",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 414
+    },
+    {
+      "name": "default_focus_groups",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 421
+    },
+    {
+      "name": "parse_focus_groups",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 430
+    },
+    {
+      "name": "group_edges",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 451
+    },
+    {
+      "name": "render_mermaid",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 462
+    },
+    {
+      "name": "markdown_link",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 472
+    },
+    {
+      "name": "module_text",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 479
+    },
+    {
+      "name": "module_ellipsis_link",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 483
+    },
+    {
+      "name": "edge_ellipsis_link",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 490
+    },
+    {
+      "name": "format_path_text",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 498
+    },
+    {
+      "name": "path_ellipsis_link",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 502
+    },
+    {
+      "name": "render_markdown_report",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 512
+    },
+    {
+      "name": "top_dependency_paths",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 597
+    },
+    {
+      "name": "render_detailed_markdown_report",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 630
+    },
+    {
+      "name": "sanitize_id",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 843
+    },
+    {
+      "name": "print_counter",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 847
+    },
+    {
+      "name": "visit",
+      "file": "vendor/upstream_analysis/internal_module_dependencies.py",
+      "line": 256
+    },
+    {
+      "name": "cc_rank",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 39
+    },
+    {
+      "name": "_rank_value",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 53
+    },
+    {
+      "name": "_iter_py_files",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 135
+    },
+    {
+      "name": "_rel",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 157
+    },
+    {
+      "name": "_percentile",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 164
+    },
+    {
+      "name": "_run_ruff_check",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 177
+    },
+    {
+      "name": "_normalized_ast_dump",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 205
+    },
+    {
+      "name": "_collect_function_hashes",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 218
+    },
+    {
+      "name": "_detect_duplicates",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 249
+    },
+    {
+      "name": "_lcom1",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 274
+    },
+    {
+      "name": "_cohesion_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 302
+    },
+    {
+      "name": "_is_decorator_registered",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 354
+    },
+    {
+      "name": "_interface_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 369
+    },
+    {
+      "name": "build_snapshot",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 416
+    },
+    {
+      "name": "_run_coverage_command",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 522
+    },
+    {
+      "name": "_coverage_age_minutes",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 539
+    },
+    {
+      "name": "_coverage_json_from_data_file",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 548
+    },
+    {
+      "name": "_load_coverage_snapshot",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 572
+    },
+    {
+      "name": "decide_gate",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 611
+    },
+    {
+      "name": "_snapshot_from_json",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 804
+    },
+    {
+      "name": "render_report",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 846
+    },
+    {
+      "name": "parse_args",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1164
+    },
+    {
+      "name": "_write_json",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1235
+    },
+    {
+      "name": "_write_text",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1240
+    },
+    {
+      "name": "_ratchet_baseline_individual_metrics",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1245
+    },
+    {
+      "name": "_fmt_delta",
+      "file": "vendor/upstream_analysis/quality_gate_report.py",
+      "line": 1429
+    }
+  ],
+  "move_candidates": []
+}

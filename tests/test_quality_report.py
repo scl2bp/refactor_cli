@@ -30,6 +30,8 @@ def test_quality_report_renders_move_and_duplicate_sections():
             "move_candidates": [{"module": "demo_pkg.api", "reason": "high fan-out", "fan_out": 2}],
             "modules": [],
             "cycles": [],
+            "dependency_paths": [],
+            "mermaid": "flowchart LR",
             "complexity": [],
             "duplicate_groups": [],
             "unused_functions": [],
