@@ -94,15 +94,27 @@ def _normalized_hash(node: ast.AST) -> str:
 def _unused_functions(trees: dict[Path, ast.AST], relative: dict[Path, str]) -> list[dict[str, Any]]:
     definitions: list[dict[str, Any]] = []
     references: set[str] = set()
+    registered: set[str] = set()
     for path, tree in trees.items():
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if node.name.startswith("__") and node.name.endswith("__"):
-                    continue
-                definitions.append({"name": node.name, "file": relative[path], "line": node.lineno})
-            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
                 references.add(node.id)
-    return [item for item in definitions if item["name"] not in references]
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "set_defaults"
+            ):
+                for keyword in node.keywords:
+                    if keyword.arg == "func" and isinstance(keyword.value, ast.Name):
+                        registered.add(keyword.value.id)
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_"):
+                definitions.append({"name": node.name, "file": relative[path], "line": node.lineno})
+    return [
+        item
+        for item in definitions
+        if item["name"] not in references and item["name"] not in registered
+    ]
 
 
 def collect_quality_report(*, project_root: Path, scope_path: Path) -> dict[str, Any]:
