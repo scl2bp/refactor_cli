@@ -2,6 +2,7 @@ import argparse
 from refactor_cli.cli.commands import (
     cmd_candidate_phase_a,
     cmd_candidate_report,
+    cmd_candidate_evaluate,
     cmd_candidate_search,
     cmd_quality_report,
 )
@@ -177,6 +178,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     candidate_report_parser.set_defaults(include_demo_artifacts=None)
     candidate_report_parser.set_defaults(func=cmd_candidate_report)
+
+    candidate_evaluate_parser = subparsers.add_parser(
+        "candidate-evaluate",
+        help="Validate candidate artifacts and write a machine-readable evaluation",
+    )
+    candidate_evaluate_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    candidate_evaluate_parser.add_argument("--input-dir", default=None)
+    candidate_evaluate_parser.add_argument("--output", default=None)
+    candidate_evaluate_parser.add_argument("--scope-path", default=None)
+    candidate_evaluate_parser.add_argument("--project-root", default=None)
+    candidate_evaluate_parser.add_argument("--cbm-binary", default=None)
+    candidate_evaluate_parser.set_defaults(include_demo_artifacts=None)
+    candidate_evaluate_parser.set_defaults(func=cmd_candidate_evaluate)
 
     candidate_search_parser = subparsers.add_parser(
         "candidate-search",

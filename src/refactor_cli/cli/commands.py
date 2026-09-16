@@ -20,6 +20,7 @@ from refactor_cli.analysis.quality_report import write_quality_report
 from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
 from refactor_cli.analysis.source_index import run_coderag_validate_only, run_source_index
 from refactor_cli.analysis.scope_baseline import collect_scope_baseline
+from refactor_cli.analysis.evaluation import evaluate_candidate_artifacts
 from refactor_cli.candidate_report import build_candidate_report
 from refactor_cli.runtime_tools import ensure_runtime_dependencies
 
@@ -167,6 +168,20 @@ def cmd_candidate_report(args: argparse.Namespace) -> int:
     print(f"  output: {output_path}")
     print(f"  lines: {len(report.splitlines())}")
     return 0
+
+
+def cmd_candidate_evaluate(args: argparse.Namespace) -> int:
+    settings = _resolve_candidate_report_settings(args)
+    output_path = Path(args.output or settings["input_dir"] / "evaluation.json")
+    result = evaluate_candidate_artifacts(
+        input_dir=settings["input_dir"],
+        output_path=output_path,
+    )
+    print(f"CANDIDATE EVALUATION {result['status']}")
+    print(f"  input: {settings['input_dir']}")
+    print(f"  output: {output_path}")
+    print(f"  automation-ready: {'YES' if result['ready_for_automation'] else 'NO'}")
+    return 0 if result["status"] != "FAIL" else 1
 
 
 def cmd_candidate_search(args: argparse.Namespace) -> int:
