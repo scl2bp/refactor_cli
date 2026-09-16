@@ -6,10 +6,12 @@ from refactor_cli import _resolve_candidate_search_settings
 from typing import Any
 import json
 from pathlib import Path
-from refactor_cli import _load_optional_config
-from refactor_cli import _candidate_analysis_config
-from refactor_cli import _resolve_optional_project_root
-from refactor_cli import _config_or_default
+from refactor_cli.config.settings import (
+    _candidate_analysis_config,
+    _config_or_default,
+    _load_optional_config,
+    _resolve_optional_project_root,
+)
 from refactor_cli.analysis.architecture_report import collect_architecture_report
 from refactor_cli.analysis.candidate_tools import run_cbm_tool
 from refactor_cli.analysis.dependency_graph import collect_dependency_graph

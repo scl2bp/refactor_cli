@@ -2,23 +2,6 @@ version: 1
 root: /workspace/refactor_cli
 files:
   src/refactor_cli/__init__.py:
-  - SimpleStatementLine DEFAULT_CONFIG
-  - SimpleStatementLine DEFAULT_TREE
-  - SimpleStatementLine DEFAULT_TREE_PATCH
-  - SimpleStatementLine DEFAULT_TREE_EDIT
-  - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
-  - SimpleStatementLine DEFAULT_CANDIDATE_OUTPUT_DIR
-  - SimpleStatementLine DEFAULT_CANDIDATE_REPORT
-  - FunctionDef _load_optional_config
-  - FunctionDef _candidate_analysis_config
-  - FunctionDef _config_or_default
-  - FunctionDef _resolve_path_setting
-  - FunctionDef _resolve_optional_project_root
-  - FunctionDef _find_default_config_path
-  - FunctionDef _semantic_terms_setting
-  - FunctionDef _exclude_substrings_setting
-  - FunctionDef _semantic_query_profiles_setting
-  - FunctionDef _load_summary_if_present
   - FunctionDef _resolve_candidate_phase_a_settings
   - FunctionDef _resolve_candidate_report_settings
   - FunctionDef _project_name_default
@@ -130,6 +113,24 @@ files:
   - FunctionDef cmd_quality_report
   src/refactor_cli/cli/parser.py:
   - FunctionDef build_parser
+  src/refactor_cli/config/settings.py:
+  - SimpleStatementLine DEFAULT_CONFIG
+  - SimpleStatementLine DEFAULT_TREE
+  - SimpleStatementLine DEFAULT_TREE_PATCH
+  - SimpleStatementLine DEFAULT_TREE_EDIT
+  - SimpleStatementLine DEFAULT_APPLIED_PATCHES_DIR
+  - SimpleStatementLine DEFAULT_CANDIDATE_OUTPUT_DIR
+  - SimpleStatementLine DEFAULT_CANDIDATE_REPORT
+  - FunctionDef _load_optional_config
+  - FunctionDef _candidate_analysis_config
+  - FunctionDef _config_or_default
+  - FunctionDef _resolve_path_setting
+  - FunctionDef _resolve_optional_project_root
+  - FunctionDef _find_default_config_path
+  - FunctionDef _semantic_terms_setting
+  - FunctionDef _exclude_substrings_setting
+  - FunctionDef _semantic_query_profiles_setting
+  - FunctionDef _load_summary_if_present
   src/refactor_cli/discovery.py:
   - FunctionDef load_config
   - FunctionDef resolve_project_root
