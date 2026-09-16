@@ -173,96 +173,188 @@ Move tree delta interpretation and apply/verify orchestration into a dedicated w
 
 Move parser and command handlers into `cli.py`, leaving `__init__.py` as a small export surface.
 
-## Feature Evaluation
+## Feature Evaluation and Refinement
 
-The analysis and quality features were evaluated against the current `refactor-cli`
-source tree on 2026-09-16. The configured scope was `src/refactor_cli`, with
-`.eval` excluded from dependency qualified-name results.
+The features were re-evaluated one by one from a clean state on 2026-09-16. The
+configured scope was `src/refactor_cli`; `.eval` was excluded from dependency
+qualified-name queries. The order below follows the actual information flow.
 
-### Evaluation commands
+### Chapter 1: Configured file discovery
 
-Run these commands from the repository root:
+**Feature description:** `files` resolves the project root and applies the include
+and exclude rules from `.refactor/config.json`.
+
+**Command and options:**
 
 ```bash
-refactor-cli files
-refactor-cli tree --print
+refactor-cli files --config .refactor/config.json
+```
+
+**Generated files:** None. The command is read-only.
+
+**Generated-file description:** The terminal output reports the resolved project
+root and discovered Python files.
+
+**Usefulness evaluation:** Essential and reliable. It discovered 18 Python files,
+which became the input for every later evaluation.
+
+**Improvement suggestion:** Add `--format json` with included files, excluded files,
+and counts so downstream features can consume a recorded discovery manifest.
+
+### Chapter 2: Structural tree analysis
+
+**Feature description:** `tree` converts the discovered Python source into a
+persistent top-level structural inventory used to plan and verify moves.
+
+**Command and options:**
+
+```bash
+refactor-cli tree --config .refactor/config.json \
+  --output .refactor/tree.yaml --print
+```
+
+**Generated files:** `.refactor/tree.yaml`.
+
+**Generated-file description:** Compact YAML containing 18 files and their modules,
+functions, classes, constants, and other top-level nodes.
+
+**Usefulness evaluation:** High. It is reviewable, deterministic, and provides the
+structural contract checked after `apply-tree-edit` or `apply-tree-patch`.
+
+**Improvement suggestion:** Validate the tree schema/version and add a compact JSON
+summary of node counts for easier baseline comparison.
+
+### Chapter 3: Native quality report
+
+**Feature description:** `quality-report` performs local AST analysis without CBM.
+It calculates imports, fan-in/fan-out, cycles, dependency paths, complexity,
+normalized duplicate groups, unused public functions, and high-fan-out move
+candidates.
+
+**Command and options:**
+
+```bash
 refactor-cli quality-report \
   --config .refactor/config.json \
   --scope-path src/refactor_cli \
   --output-dir .refactor/analysis/quality
+```
+
+**Generated files:** `.refactor/analysis/quality/quality.json` and
+`.refactor/analysis/quality/quality.md`.
+
+**Generated-file description:** JSON contains machine-readable findings. Markdown
+renders dependency tables, cycles, paths, Mermaid, source links, complexity
+hotspots, duplicates, and unused functions.
+
+**Usefulness evaluation:** High for fast, provider-independent refactoring triage.
+The clean run found 18 modules, no parse errors, 7 move candidates, 0 duplicate
+groups, and 66 unused public-function findings. The metrics are useful signals but
+not release-quality gates.
+
+**Improvement suggestion:** Add baseline comparison, cyclomatic complexity,
+maintainability metrics, and regression statuses.
+
+### Chapter 4: Candidate Phase A analysis
+
+**Feature description:** `candidate-phase-a` runs Codebase Memory adapters for
+source indexing, dependency extraction, semantic retrieval, and architecture
+overview. Optional CodeRAG validation can also be enabled.
+
+**Command and options:**
+
+```bash
 refactor-cli candidate-phase-a --config .refactor/config.json
+```
+
+Configuration controls project name, CBM binary, index mode, scope, qualified-name
+prefix, semantic terms, result limit, exclusions, output directory, and the
+optional `--include-coderag-validate` flag.
+
+**Generated files:**
+
+- `.refactor/analysis/candidates/source_index.json`
+- `.refactor/analysis/candidates/dependency_graph.json`
+- `.refactor/analysis/candidates/semantic_retrieval.json`
+- `.refactor/analysis/candidates/architecture_report.json`
+- `.refactor/analysis/candidates/summary.json`
+- optional `.refactor/analysis/candidates/coderag_validate.json`
+
+**Generated-file description:** The source index records coverage and parse health;
+the dependency graph stores `CALLS`, `IMPORTS`, and `INHERITS` rows; semantic
+retrieval stores ranked/grouped hits; architecture reports hotspots, clusters,
+entry points, and graph counts; summary records adapter status.
+
+**Usefulness evaluation:** High when CBM is available. All enabled adapters were
+`OK`. The scoped architecture view contained 205 nodes and 539 edges, but the
+underlying index contained 45,392 nodes and 194,841 edges with 60 partial parses.
+
+**Improvement suggestion:** Isolate the indexed corpus to the configured source
+scope, filter excluded paths before semantic ranking, and report discarded rows.
+
+### Chapter 5: Candidate report
+
+**Feature description:** `candidate-report` consolidates the Phase A artifacts into
+a human-readable architecture and readiness report.
+
+**Command and options:**
+
+```bash
 refactor-cli candidate-report --config .refactor/config.json
+```
+
+Use `--input-dir` and `--output` to override the configured candidate artifact
+directory and report path.
+
+**Generated files:** `.refactor/analysis/candidates/report.md`.
+
+**Generated-file description:** Markdown with module status, artifact sizes, raw
+artifact interpretation, Mermaid diagrams, readiness, index health, and findings.
+
+**Usefulness evaluation:** High for human review and handoff. The clean run
+generated a 379-line report and clearly marked CodeRAG as `SKIP` because it was
+disabled.
+
+**Improvement suggestion:** Add stable section identifiers, finding counts, and a
+report-diff mode for comparing evaluation runs.
+
+### Chapter 6: Focused candidate search
+
+**Feature description:** `candidate-search` answers a focused semantic or graph
+question without rebuilding the complete Phase A artifact set.
+
+**Command and options:**
+
+```bash
 refactor-cli candidate-search \
   --config .refactor/config.json \
   --semantic-query 'dependency,module,quality metrics' \
-  --label Function \
-  --limit 20
+  --label Function --limit 20
 ```
 
-### Generated evaluation files
+Other useful options are `--profile`, `--scope-path`, `--scope-qn-prefix`,
+`--file-pattern`, `--format json|tree`, and `--cbm-options`.
 
-| File | Feature | Evaluation value |
-|---|---|---|
-| `.refactor/tree.yaml` | Structural tree | Persistent inventory used to plan and verify moves |
-| `.refactor/analysis/quality/quality.json` | Native quality | Machine-readable dependencies, complexity, duplicates, unused functions, and move candidates |
-| `.refactor/analysis/quality/quality.md` | Native quality | Human-readable quality findings |
-| `.refactor/analysis/candidates/source_index.json` | Source indexing | Index coverage, exclusions, node/edge counts, and parse warnings |
-| `.refactor/analysis/candidates/dependency_graph.json` | Dependency graph | Scoped raw `CALLS`, `IMPORTS`, and `INHERITS` edges |
-| `.refactor/analysis/candidates/semantic_retrieval.json` | Semantic retrieval | Ranked and grouped discovery results |
-| `.refactor/analysis/candidates/architecture_report.json` | Architecture report | Hotspots, clusters, entry points, and graph summaries |
-| `.refactor/analysis/candidates/summary.json` | Phase A orchestration | Module-level `OK`, `FAIL`, or `SKIP` status |
-| `.refactor/analysis/candidates/report.md` | Candidate report | Consolidated interpretation of all Phase A artifacts |
+**Generated files:** None by default; JSON is printed to the terminal.
 
-`candidate-search` prints focused JSON to the terminal and does not create an
-artifact unless its output is redirected by the caller.
+**Generated-file description:** The result contains grouped structural matches and
+semantic rows with names, labels, source files, scores, and graph degree data.
 
-### Results and interpretation
+**Usefulness evaluation:** High for interactive investigation. The clean run found
+157 total matches and returned 20 rows. Semantic results still included `.eval`
+paths, so they require review before driving an automated move.
 
-| Feature | Result | Assessment |
-|---|---|---|
-| Configured file discovery | 18 Python files | Reliable project-scope input |
-| Structural tree | 18 files; root reduced to 16 top-level nodes | Good planning and post-refactor verification boundary |
-| Native quality report | 18 modules, no parse errors, 7 move candidates, 0 duplicate groups, 66 unused public functions | Useful local baseline; heuristics need trend tracking before being treated as gates |
-| Source index | `OK`; 45,392 indexed nodes and 194,841 indexed edges; 60 partial parses reported | Operationally successful, but the index is much broader than the package scope |
-| Scoped architecture report | 205 nodes and 539 edges; 157 functions; 217 calls; 80 imports | Strongest high-level architecture view |
-| Scoped dependency graph | `OK`; 455 returned edge rows | Useful for concrete relationship inspection |
-| Semantic retrieval | `OK`; 204 matching structural entries in the Phase A artifact | Helpful for discovery, but rankings are affected by corpus noise |
-| Candidate report | 379-line Markdown report | Good artifact for human inspection and handoff |
-| Focused candidate search | `OK`; 157 total matches, 20 returned | Useful interactively; semantic results included `.eval` entries and require filtering |
-| CodeRAG validation | `SKIP` | Disabled by configuration, therefore unevaluated |
+**Improvement suggestion:** Apply path/QN exclusions to semantic rows, add an
+`--output` option, and save query metadata alongside results.
 
-### Refinement plan
+### Evaluation conclusion and next order
 
-1. **Isolate the indexed corpus.** Ensure Codebase Memory indexing honors the
-  configured source scope and does not expose `.eval` or vendored evaluation data
-  to semantic ranking. Add a regression fixture that fails when an excluded path
-  appears in candidate output.
-2. **Make scope filtering consistent.** Apply the same path and qualified-name
-  filtering to source indexing, semantic retrieval, architecture summaries, and
-  `candidate-search`, then report the number of discarded rows.
-3. **Add quality baselines.** Support a checked-in baseline and a comparison mode
-  for complexity, fan-in/fan-out, duplicate groups, unused functions, parse errors,
-  and cycle count. Report regressions separately from informational findings.
-4. **Improve native metrics.** Add Radon-style cyclomatic complexity and
-  maintainability indicators, while retaining the current dependency and move
-  signals as the refactoring-specific layer.
-5. **Strengthen duplicate and unused analysis.** Add token-level duplicate detection,
-  import-aware symbol references, and explicit dynamic-registration adapters rather
-  than relying only on the current conservative AST heuristics.
-6. **Evaluate optional providers explicitly.** Add a documented CodeRAG evaluation
-  run and distinguish `SKIP`, `UNAVAILABLE`, `FAIL`, and `OK` in the readiness
-  summary.
-7. **Add feature tests around artifacts.** Validate JSON schemas, report sections,
-  source links, Mermaid syntax, scope exclusions, and stable status values in
-  focused tests.
-8. **Continue structural extraction.** Move the remaining candidate settings and
-  orchestration from `__init__.py` into the CLI/config/workflow boundaries using
-  one cohesive `refactor-cli apply-tree-edit` operation at a time.
-
-The next highest-value refinement is corpus isolation. The evaluation shows that
-the analysis algorithms work, but semantic ranking cannot yet be treated as a clean
-refactoring recommendation until excluded evaluation data is removed or filtered
-at the indexing boundary.
+The most valuable immediate refinement is corpus isolation because it affects both
+Phase A semantic retrieval and focused search. After that, add quality baselines,
+feature-level artifact tests, optional CodeRAG evaluation, stronger native metrics,
+and continued extraction of the remaining CLI/config/workflow code from
+`__init__.py`. Each refinement should repeat the six chapters from a clean output
+directory and compare the generated artifacts with the previous baseline.
 
 ## Working Rules
 

@@ -106,14 +106,64 @@ in the current folder or any parent folder automatically.
 
 ## Code Analysis and Quality Features
 
-### Structural tree analysis
+### Chapter 1: Configured file discovery
+
+**Feature description:** `files` resolves the project root and lists the Python
+files selected by `.refactor/config.json`. It is the input boundary for all later
+structural and quality analysis.
+
+**Command and options:**
+
+```bash
+refactor-cli files --config .refactor/config.json
+```
+
+The `--config` option may point to another project configuration. The command
+prints the resolved project root and discovered files.
+
+**Generated files:** None. This is a read-only discovery command.
+
+**Generated-file description:** Since no file is written, the terminal output is
+the evaluation result. It should show the intended project root and exclude
+`.venv`, caches, build output, and other configured exclusions.
+
+**Usefulness evaluation:** Essential and reliable as the first step. The current
+configuration discovered 18 Python files, matching the source tree used by the
+subsequent evaluations.
+
+**Improvement suggestion:** Add machine-readable output, such as `--format json`,
+and report included and excluded counts so later commands can consume the exact
+same discovery result.
+
+### Chapter 2: Structural tree analysis
+
+**Feature description:**
 
 `tree` discovers the configured Python files and records their top-level structure
 in `.refactor/tree.yaml`. The tree includes modules, functions, classes, constants,
 and other top-level nodes. It is the planning and verification boundary for
 structural refactoring.
 
-### Native quality report
+**Command and options:**
+
+```bash
+refactor-cli tree --config .refactor/config.json --output .refactor/tree.yaml --print
+```
+
+**Generated files:** `.refactor/tree.yaml`.
+
+**Generated-file description:** A compact YAML inventory containing each discovered
+file and its top-level LibCST nodes. `--print` also displays the tree in the
+terminal.
+
+**Usefulness evaluation:** High. It provides a persistent, reviewable target for
+planning moves and verifying that a structural edit produced the requested result.
+The clean evaluation regenerated a tree for all 18 files.
+
+**Improvement suggestion:** Add explicit schema/version validation and a JSON
+summary of node counts per file so large trees can be compared without parsing YAML.
+
+### Chapter 3: Native quality report
 
 `quality-report` performs a local AST-based analysis without requiring CBM. It
 reports:
@@ -131,7 +181,33 @@ default is `.refactor/analysis/quality/`. The report is a refactoring signal, no
 replacement for tests, coverage, or a full static type checker. Complexity is a
 small AST heuristic, and unused-function detection is intentionally conservative.
 
-### Candidate analysis pipeline
+**Command and options:**
+
+```bash
+refactor-cli quality-report \
+  --config .refactor/config.json \
+  --scope-path src/refactor_cli \
+  --output-dir .refactor/analysis/quality
+```
+
+**Generated files:** `.refactor/analysis/quality/quality.json` and
+`.refactor/analysis/quality/quality.md`.
+
+**Generated-file description:** The JSON contains module rows, dependency paths,
+cycles, complexity records, duplicate groups, unused functions, and move
+candidates. The Markdown file renders those findings with tables, source links,
+and a Mermaid diagram.
+
+**Usefulness evaluation:** High for local refactoring triage and independent of
+CBM. The clean evaluation found 18 modules, no parse errors, 7 move candidates,
+0 duplicate groups, and 66 unused public-function findings. These are signals,
+not quality gates.
+
+**Improvement suggestion:** Add baseline comparison, cyclomatic/maintainability
+metrics, and explicit regression status so the report can detect whether a move
+improved the code rather than only ranking current hotspots.
+
+### Chapter 4: Candidate analysis pipeline
 
 `candidate-phase-a` runs configured adapters over Codebase Memory tooling and writes:
 
@@ -151,10 +227,46 @@ It accepts semantic terms, labels, scopes, limits, and additional CBM graph flag
 Use it to investigate a specific architectural question without rebuilding the full
 Phase A artifact set.
 
-### Evaluation commands and generated files
+**Command and options:**
+
+```bash
+refactor-cli candidate-phase-a --config .refactor/config.json
+```
+
+The configuration supplies the project name, CBM binary, index mode, scope path,
+qualified-name prefix, semantic terms, result limit, and exclusions. CLI options
+override configuration when supplied. `--include-coderag-validate` enables the
+optional CodeRAG validation step.
+
+**Generated files:** `.refactor/analysis/candidates/source_index.json`,
+`dependency_graph.json`, `semantic_retrieval.json`, `architecture_report.json`,
+and `summary.json`; optionally `coderag_validate.json`.
+
+**Generated-file description:** The source index records indexing coverage and
+parse health. The dependency graph stores scoped relationship rows. Semantic
+retrieval stores grouped structural and ranked semantic hits. The architecture
+report summarizes hotspots and clusters. The summary records `OK`, `FAIL`, or
+`SKIP` for each adapter.
+
+**Usefulness evaluation:** High when CBM is available: all four enabled adapters
+completed `OK` in the clean evaluation. It provides richer call, inheritance, and
+semantic information than the native AST report. However, the index contained
+45,392 nodes and 194,841 edges, with 60 partial parses, so its scope and health
+must be checked before trusting recommendations.
+
+**Improvement suggestion:** Enforce source-scope isolation at indexing time and
+report discarded paths. The current semantic corpus can still expose `.eval`
+entries even when qualified-name exclusions are configured.
+
+### Chapter 5: Candidate report
 
 The following commands evaluate the complete analysis surface from the repository
 root. The configured scope is `src/refactor_cli`.
+
+**Feature description:** `candidate-report` converts the Phase A JSON artifacts
+into a readable architecture and readiness report.
+
+**Command and options:**
 
 ```bash
 refactor-cli files
@@ -172,30 +284,55 @@ refactor-cli candidate-search \
   --limit 20
 ```
 
-These runs update or generate:
+The report accepts the configured input directory and output path through the
+candidate-analysis settings; use `--input-dir` and `--output` to override them.
 
-| File | Produced by | Purpose |
-|---|---|---|
-| `.refactor/tree.yaml` | `tree` | Current structural inventory |
-| `.refactor/analysis/quality/quality.json` | `quality-report` | Machine-readable native quality data |
-| `.refactor/analysis/quality/quality.md` | `quality-report` | Human-readable native quality report |
-| `.refactor/analysis/candidates/source_index.json` | `candidate-phase-a` | Index health and staged-file coverage |
-| `.refactor/analysis/candidates/dependency_graph.json` | `candidate-phase-a` | Raw scoped dependency edges |
-| `.refactor/analysis/candidates/semantic_retrieval.json` | `candidate-phase-a` | Semantic and structural retrieval results |
-| `.refactor/analysis/candidates/architecture_report.json` | `candidate-phase-a` | Architecture overview and hotspots |
-| `.refactor/analysis/candidates/summary.json` | `candidate-phase-a` | Pipeline status summary |
-| `.refactor/analysis/candidates/report.md` | `candidate-report` | Consolidated readable candidate report |
-| terminal JSON output | `candidate-search` | Focused query results; no artifact is written |
+**Generated files:** `.refactor/analysis/candidates/report.md`.
 
-On 2026-09-16, the configured project evaluation found 18 Python files. The native
-report found no parse errors, 7 high-fan-out move candidates, 0 duplicate groups,
-and 66 unused public-function findings. Phase A completed with source indexing,
-dependency extraction, semantic retrieval, and architecture reporting marked `OK`;
-CodeRAG was `SKIP` because it is disabled in the configuration. CBM reported 205
-scoped nodes and 539 scoped edges in the architecture view, while the full index
-contained 45,392 nodes and 194,841 edges. The broad index also reported 60 partial
-parses, so raw semantic results must be reviewed with the configured scope and
-exclusion settings.
+**Generated-file description:** Markdown containing pipeline status, artifact sizes,
+raw-file interpretation, Mermaid status and relationship diagrams, readiness, index
+health, and architecture findings.
+
+**Usefulness evaluation:** High for human review and handoff. The clean run
+generated a 379-line report and made the raw JSON artifacts considerably easier to
+compare. It correctly showed CodeRAG as `SKIP` because it was disabled.
+
+**Improvement suggestion:** Add stable section identifiers and a compact machine
+summary of finding counts, then add a report-diff mode for comparing two runs.
+
+### Chapter 6: Focused candidate search
+
+**Feature description:** `candidate-search` runs a focused CBM graph/semantic
+query without rebuilding the full Phase A artifact set.
+
+**Command and options:**
+
+```bash
+refactor-cli candidate-search \
+  --config .refactor/config.json \
+  --semantic-query 'dependency,module,quality metrics' \
+  --label Function \
+  --limit 20
+```
+
+Useful options include `--profile`, `--scope-path`, `--scope-qn-prefix`,
+`--file-pattern`, `--format json|tree`, and `--cbm-options` for additional graph
+flags such as `--relationship CALLS`.
+
+**Generated files:** None by default. Results are printed as JSON to the terminal.
+
+**Generated-file description:** The terminal result contains grouped structural
+matches and semantic rows, including labels, source files, scores, and graph degree
+information. Redirect it explicitly if a saved artifact is needed.
+
+**Usefulness evaluation:** High for interactive investigation. The clean run
+returned 157 total matches and 20 rows. It is fast for targeted questions, but
+semantic results included `.eval` paths, so the output is not yet clean enough to
+drive an automated move decision.
+
+**Improvement suggestion:** Apply configured path and qualified-name exclusions to
+semantic rows before printing, and add `--output` plus a query metadata envelope
+for reproducible saved searches.
 
 ## Quick Start
 
