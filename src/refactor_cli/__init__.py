@@ -38,6 +38,7 @@ from refactor_cli.runtime_tools import (
 )
 from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
 from refactor_cli.analysis.source_index import run_source_index; from refactor_cli.analysis.source_index import run_coderag_validate_only
+from refactor_cli.analysis.quality_report import write_quality_report
 from refactor_cli.transforms import (
     apply_unified_diff_to_text,
     build_after_tree_from_edit,
@@ -925,6 +926,33 @@ def cmd_candidate_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_quality_report(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    config = _load_optional_config(config_path)
+    analysis = _candidate_analysis_config(config)
+    project_root = _resolve_optional_project_root(args.project_root, config_path, config)
+    scope_value = _config_or_default(args.scope_path, analysis.get("scope_path", "src"))
+    scope_path = Path(scope_value)
+    if not scope_path.is_absolute():
+        scope_path = (project_root / scope_path).resolve()
+    output_dir = Path(args.output_dir or ".refactor/analysis/quality")
+    if not output_dir.is_absolute():
+        output_dir = (project_root / output_dir).resolve()
+    payload = write_quality_report(
+        project_root=project_root,
+        scope_path=scope_path,
+        json_path=output_dir / "quality.json",
+        markdown_path=output_dir / "quality.md",
+    )
+    print("QUALITY REPORT WRITTEN")
+    print(f"  scope: {scope_path}")
+    print(f"  modules: {len(payload['modules'])}")
+    print(f"  move candidates: {len(payload['move_candidates'])}")
+    print(f"  duplicate groups: {len(payload['duplicate_groups'])}")
+    print(f"  unused functions: {len(payload['unused_functions'])}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Project-agnostic structural refactoring tool"
@@ -1127,6 +1155,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Raw CBM flags tail as '--flag value --flag2 value2'; added after wrapper defaults",
     )
     candidate_search_parser.set_defaults(func=cmd_candidate_search)
+
+    quality_parser = subparsers.add_parser(
+        "quality-report",
+        help="Analyze module dependencies, cycles, complexity, duplicates, unused functions, and move candidates",
+    )
+    quality_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    quality_parser.add_argument("--project-root", default=None)
+    quality_parser.add_argument("--scope-path", default=None)
+    quality_parser.add_argument("--output-dir", default=None)
+    quality_parser.set_defaults(func=cmd_quality_report)
 
     return parser
 
