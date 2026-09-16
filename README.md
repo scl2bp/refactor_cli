@@ -52,21 +52,104 @@ uvx --from /workspace/refactor_cli refactor-cli --help
 
 ## Runtime Requirements
 
-The tool validates required runtime tools before executing apply workflows.
+The wheel contains the `refactor_cli` code only. The repositories and files under
+`.eval/candidates` are evaluation/reference material and are not package
+dependencies or part of a standalone installation.
 
-Required Python packages:
+Core Python dependencies installed from `pyproject.toml`:
 
-- `libcst`
-- `pyyaml`
-- `ruff`
-- `autoimport`
-- `emend`
+- `libcst` for parsing and structural edits
+- `pyyaml` for tree/config documents
+- `ruff` for formatting and lint safeguards
+- `autoimport` for import repair after edits
+- `radon` for the complexity gate
+
+`emend` is installed by default because the default tree-apply command selects its
+move backend. The backend itself is optional: choose `--move-backend internal` when
+Emend is not needed. The runtime can also invoke Emend through an `emend` executable
+or `uvx emend`.
 
 Supported Emend invocation modes:
 
 1. `uvx emend`
 2. `emend`
 3. `python -m emend`
+
+## Optional Analysis Providers
+
+The candidate analysis commands use external providers through thin adapters. They
+are deliberately not hard dependencies of the Python package because they have
+different runtimes, release cycles, and operational requirements.
+
+### Codebase Memory MCP
+
+`codebase-memory-mcp` is the only `.eval/candidates` provider used by the current
+implementation. It supplies source indexing, dependency graph, semantic retrieval,
+and architecture analysis for `candidate-phase-a` and `candidate-report`.
+
+Install the native executable using the provider's documented installer, then make
+it available on `PATH`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh | bash
+codebase-memory-mcp --help
+```
+
+Alternatively, set its explicit path in `.refactor/config.json` or pass
+`--cbm-binary`:
+
+```json
+{
+  "candidate_analysis": {
+    "cbm_binary": "/absolute/path/to/codebase-memory-mcp"
+  }
+}
+```
+
+The development checkout also accepts `.eval/tools/cbm/codebase-memory-mcp`, but
+that path is intentionally ignored and is not available after installing the
+standalone package. A package user should prefer `PATH` or an explicit absolute
+configuration path.
+
+Run it with:
+
+```bash
+refactor-cli candidate-phase-a
+refactor-cli candidate-report
+refactor-cli candidate-evaluate
+```
+
+Without Codebase Memory, the core commands, internal dependency report, and
+quality gate remain available; only the provider-backed candidate analysis is
+unavailable.
+
+### CodeRAG
+
+CodeRAG is an optional validation adapter, not a required analysis provider. It
+expects a checked-out/buildable CodeRAG tree, `npm`, and Neo4j variables
+(`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`). Enable it only when those
+prerequisites are deliberately configured:
+
+```bash
+refactor-cli candidate-phase-a --include-coderag-validate \
+  --coderag-path /absolute/path/to/coderag
+```
+
+The result is written as `coderag_validate.json`. Missing Neo4j variables are
+reported as `SKIP`; a missing or invalid CodeRAG path is reported as a failed
+optional adapter and does not block the core workflow when CodeRAG is not enabled.
+
+### Reference-only candidates
+
+These repositories are not imported or executed by the current package:
+
+- `repo-map`: reference for repository summaries; Python >=3.12 and its own dependency set
+- `code-graph-analysis-pipeline`: research/advanced graph pipeline; Java, Neo4j, and jQAssistant setup
+- `InvAASTCluster`: research clustering workflow with separate legacy/runtime requirements
+
+They remain under `.eval/candidates` for comparison and installation evaluation
+only. Do not add them to `refactor-cli` dependencies unless a concrete adapter is
+implemented and its runtime contract is documented.
 
 ## Command Surface
 

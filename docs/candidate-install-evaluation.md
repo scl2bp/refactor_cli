@@ -8,8 +8,21 @@ Scope: candidates listed in the concept table in [docs/emend-semantic-clustering
 
 The prior custom semantic-graph implementation was reverted.
 
+The candidate repositories are not vendored runtime dependencies of the standalone
+`refactor-cli` package. They are evaluated separately and only a small subset is
+used through explicit adapters:
+
+- `codebase-memory-mcp` is the active external provider for candidate analysis.
+- CodeRAG is an optional validation adapter requiring Node/npm and Neo4j.
+- `repo-map`, `code-graph-analysis-pipeline`, and InvAASTCluster are reference-only.
+
+The Python package wheel contains `src/refactor_cli` only. Package users must
+install external providers separately and configure their executable/path; they
+should not copy `.eval/candidates` into an installed package.
+
 Current status:
-- Local cloning completed for all five candidates.
+- Local cloning/evaluation completed for all five candidates; this does not mean
+	all five are runtime dependencies of `refactor-cli`.
 - Installation or bootstrap attempts were executed for each candidate.
 - Four candidates now have successful install or prerequisite setup in compatible runtimes.
 - One candidate remains partially blocked due additional external tooling requirements.
