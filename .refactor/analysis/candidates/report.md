@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T18:31:12
+Generated: 2026-09-16T18:44:34
 
 Project: `refactor_cli`
 
@@ -39,6 +39,51 @@ Next action: Inspect the external dependency list and expand configuration only 
 | architecture_report | OK |
 | coderag_validate | SKIP |
 
+## Scope Contract
+
+The analysis corpus is defined by the configured file set. Repository files outside
+that set are not analyzed. They appear only as external dependencies when imports
+from configured files point to them.
+
+- Configuration source: `/workspace/refactor_cli/.refactor/config.json`
+- Project root resolved from configuration: `/workspace/refactor_cli`
+- Include patterns: `['src/**/*.py']`
+- Exclude patterns: `['.venv/**', '**/__pycache__/**', 'build/**', 'dist/**']`
+- Candidate package scope: `src/refactor_cli`
+- Qualified-name scope: `refactor_cli.src.refactor_cli`
+- Configured files: **19**
+- AST files analyzed: **19**
+- CBM files indexed: **19**
+- AST external imports: **68**
+- CBM qualified-name exclusions: `['.eval.']`
+
+How the scope is applied:
+
+- `files` resolves the include/exclude patterns and establishes the file manifest.
+- AST analysis parses that manifest and classifies imports as internal or external.
+- CBM indexes a temporary corpus containing only that manifest.
+- Dependency queries use the qualified-name scope and post-query endpoint filtering.
+- Semantic results are counted by path; non-local or excluded rows are not trusted as internal evidence.
+
+To include an external dependency in the analysis, change the configured include
+patterns and rerun Phase A. Do not infer scope expansion from a search hit alone.
+
+## Degradation Grades
+
+`DEGRADED` is accompanied by a measured loss, not just a boolean warning. The
+format is `affected / total`, where coverage is the accepted share of the total.
+
+| Capability | Affected / Total | Coverage | Loss | Grade |
+|---|---:|---:|---:|---|
+| configured files | 0 / 19 | 100.0% | 0.0% | NONE |
+| AST/CBM import agreement | 1 / 40 | 97.5% | 2.5% | MODERATE |
+| semantic locality | 7 / 100 | 93.0% | 7.0% | MAJOR |
+
+Grade thresholds: `NONE` = 0% loss, `MINOR` = up to 1%, `MODERATE` = up to 5%,
+`MAJOR` = up to 20%, and `CRITICAL` = above 20%. A zero denominator is
+`NOT_MEASURABLE`. For example, 1 missing item out of 1000 is `MINOR`; 99 out of
+100 is `CRITICAL`.
+
 ```mermaid
 flowchart LR
   scope_baseline["scope_baseline: OK"]
@@ -61,7 +106,7 @@ Example:
 |---|---:|
 | architecture_report.json | 6505 |
 | dependency_graph.json | 122457 |
-| evaluation.json | 981 |
+| evaluation.json | 1540 |
 | scope_baseline.json | 15436 |
 | semantic_retrieval.json | 108356 |
 | source_index.json | 8072 |
@@ -72,7 +117,7 @@ pie showData
   title Artifact Sizes (bytes)
   "architecture_report.json" : 6505
   "dependency_graph.json" : 122457
-  "evaluation.json" : 981
+  "evaluation.json" : 1540
   "scope_baseline.json" : 15436
   "semantic_retrieval.json" : 108356
   "source_index.json" : 8072

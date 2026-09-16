@@ -9,6 +9,7 @@ import re
 from typing import Any
 
 from refactor_cli.analysis.candidate_tools import resolve_cbm_binary; from refactor_cli.analysis.candidate_tools import run_cbm_tool
+from refactor_cli.analysis.quality import quality_summary
 from refactor_cli.file_io import load_json
 
 
@@ -974,6 +975,39 @@ def _candidate_input_rows(
     ]
 
 
+def _scope_contract(
+    *,
+    source_index: dict[str, Any],
+    scope_baseline: dict[str, Any],
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    config_summary = source_index.get("config_summary") or {}
+    scope = summary.get("scope", {})
+    config_path = config_summary.get("config_path", "not recorded")
+    project_root = config_summary.get(
+        "project_root", source_index.get("project_root", "not recorded")
+    )
+    config = {}
+    if config_path := config_summary.get("config_path"):
+        path = Path(config_path)
+        if path.exists():
+            config = load_json(path)
+    file_config = config.get("python_files", {})
+    return {
+        "config_path": config_path,
+        "project_root": project_root,
+        "include_patterns": file_config.get("include", ["**/*.py"]),
+        "exclude_patterns": file_config.get("exclude", []),
+        "scope_path": scope.get("scope_path", scope_baseline.get("scope_path", "")),
+        "scope_qn_prefix": scope.get("scope_qn_prefix", "not recorded"),
+        "configured_files": scope_baseline.get("counts", {}).get("configured_files", 0),
+        "ast_files": scope_baseline.get("counts", {}).get("parsed_files", 0),
+        "cbm_files": len(source_index.get("staged_files", [])),
+        "external_imports": scope_baseline.get("counts", {}).get("external_imports", 0),
+        "excluded_qn_substrings": scope.get("exclude_qn_substrings", []),
+    }
+
+
 def _markdown_input_table(rows: list[dict[str, str]]) -> str:
     lines = [
         "| Artifact | Candidate | Input Used | Output Produced | How To Interpret |",
@@ -1063,6 +1097,11 @@ def build_candidate_report(
         source_index.get("index", {}).get("payload", {}).get("structuredContent", {})
     )
     baseline_counts = scope_baseline.get("counts", {})
+    scope_contract = _scope_contract(
+        source_index=source_index,
+        scope_baseline=scope_baseline,
+        summary=summary,
+    )
 
     scoped_architecture = _scoped_architecture(
         project_root=project_root,
@@ -1215,6 +1254,24 @@ def build_candidate_report(
         scope_path,
         exclude_substrings=scope_policy.get("exclude_qn_substrings", []),
     )
+    quality = {
+        "configured files": quality_summary(
+            total=baseline_counts.get("configured_files", 0),
+            affected=(
+                baseline_counts.get("parse_errors", 0)
+                + max(0, baseline_counts.get("configured_files", 0) - len(source_index.get("staged_files", [])))
+            ),
+        ),
+        "AST/CBM import agreement": quality_summary(
+            total=max(import_comparison["ast_edges"], import_comparison["cbm_edges"]),
+            affected=len(import_comparison["missing_from_cbm"])
+            + len(import_comparison["extra_in_cbm"]),
+        ),
+        "semantic locality": quality_summary(
+            total=semantic_noise["raw"],
+            affected=semantic_noise["non_local"] + semantic_noise["discarded"],
+        ),
+    }
     modules = summary["modules"]
     provider_modules_ok = modules.get("source_index", True) is True
     partial_parse_count = int(structured_index.get("parse_partial_count", 0) or 0)
@@ -1315,6 +1372,12 @@ def build_candidate_report(
     status_lines = "\n".join(
         f"| {name} | {status_by_module.get(name, _status_label(value))} |"
         for name, value in modules.items()
+    )
+    quality_lines = "\n".join(
+        f"| {name} | {details['affected']} / {details['total']} | "
+        f"{details['coverage_percent'] if details['coverage_percent'] is not None else 'n/a'}% | "
+        f"{details['loss_percent'] if details['loss_percent'] is not None else 'n/a'}% | {details['grade']} |"
+        for name, details in quality.items()
     )
 
     size_lines = "\n".join(f"| {name} | {size} |" for name, size in sizes)
@@ -1468,6 +1531,49 @@ Next action: {next_action}
 | Module | Status |
 |---|---|
 {status_lines}
+
+## Scope Contract
+
+The analysis corpus is defined by the configured file set. Repository files outside
+that set are not analyzed. They appear only as external dependencies when imports
+from configured files point to them.
+
+- Configuration source: `{scope_contract["config_path"]}`
+- Project root resolved from configuration: `{scope_contract["project_root"]}`
+- Include patterns: `{scope_contract["include_patterns"]}`
+- Exclude patterns: `{scope_contract["exclude_patterns"]}`
+- Candidate package scope: `{scope_contract["scope_path"]}`
+- Qualified-name scope: `{scope_contract["scope_qn_prefix"]}`
+- Configured files: **{scope_contract["configured_files"]}**
+- AST files analyzed: **{scope_contract["ast_files"]}**
+- CBM files indexed: **{scope_contract["cbm_files"]}**
+- AST external imports: **{scope_contract["external_imports"]}**
+- CBM qualified-name exclusions: `{scope_contract["excluded_qn_substrings"]}`
+
+How the scope is applied:
+
+- `files` resolves the include/exclude patterns and establishes the file manifest.
+- AST analysis parses that manifest and classifies imports as internal or external.
+- CBM indexes a temporary corpus containing only that manifest.
+- Dependency queries use the qualified-name scope and post-query endpoint filtering.
+- Semantic results are counted by path; non-local or excluded rows are not trusted as internal evidence.
+
+To include an external dependency in the analysis, change the configured include
+patterns and rerun Phase A. Do not infer scope expansion from a search hit alone.
+
+## Degradation Grades
+
+`DEGRADED` is accompanied by a measured loss, not just a boolean warning. The
+format is `affected / total`, where coverage is the accepted share of the total.
+
+| Capability | Affected / Total | Coverage | Loss | Grade |
+|---|---:|---:|---:|---|
+{quality_lines}
+
+Grade thresholds: `NONE` = 0% loss, `MINOR` = up to 1%, `MODERATE` = up to 5%,
+`MAJOR` = up to 20%, and `CRITICAL` = above 20%. A zero denominator is
+`NOT_MEASURABLE`. For example, 1 missing item out of 1000 is `MINOR`; 99 out of
+100 is `CRITICAL`.
 
 {_mermaid_status(status_by_module)}
 

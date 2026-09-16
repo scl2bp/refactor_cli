@@ -181,6 +181,14 @@ def cmd_candidate_evaluate(args: argparse.Namespace) -> int:
     print(f"  input: {settings['input_dir']}")
     print(f"  output: {output_path}")
     print(f"  automation-ready: {'YES' if result['ready_for_automation'] else 'NO'}")
+    for name, details in result.get("quality", {}).items():
+        coverage = details.get("coverage_percent")
+        loss = details.get("loss_percent")
+        print(
+            f"  {name}: {details['affected']}/{details['total']} affected, "
+            f"coverage={coverage if coverage is not None else 'n/a'}%, "
+            f"loss={loss if loss is not None else 'n/a'}%, grade={details['grade']}"
+        )
     return 0 if result["status"] != "FAIL" else 1
 
 

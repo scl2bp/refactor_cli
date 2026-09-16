@@ -10,6 +10,7 @@ from refactor_cli.__init__ import (
 from refactor_cli.candidate_report import (
     _fallback_dependency_rows,
     _baseline_dependency_rows,
+    _scope_contract,
     _optional_demo_artifacts_section,
     _compare_ast_cbm_imports,
     _parse_relation_rows,
@@ -68,6 +69,37 @@ def test_baseline_dependency_rows_are_used_as_authoritative_module_fallback():
     )
 
     assert rows == [("demo_pkg", "IMPORTS", "demo_pkg.api")]
+
+
+def test_scope_contract_explains_configured_ast_and_cbm_boundaries(tmp_path: Path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "python_files": {
+                    "include": ["src/**/*.py"],
+                    "exclude": ["vendor/**"],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    contract = _scope_contract(
+        source_index={
+            "config_summary": {
+                "config_path": str(config_path),
+                "project_root": str(tmp_path),
+            },
+            "staged_files": ["src/pkg/a.py"],
+        },
+        scope_baseline={"scope_path": "src/pkg", "counts": {"configured_files": 1, "parsed_files": 1, "external_imports": 2}},
+        summary={"scope": {"scope_path": "src/pkg", "scope_qn_prefix": "pkg"}},
+    )
+
+    assert contract["include_patterns"] == ["src/**/*.py"]
+    assert contract["exclude_patterns"] == ["vendor/**"]
+    assert contract["configured_files"] == contract["ast_files"] == contract["cbm_files"] == 1
 
 
 def test_parse_relation_rows_handles_generic_cbm_output():

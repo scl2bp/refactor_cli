@@ -11,6 +11,7 @@ from refactor_cli.candidate_report import (
     _semantic_noise_summary,
     _scope_qn_prefix,
 )
+from refactor_cli.analysis.quality import quality_summary
 from refactor_cli.file_io import load_json
 
 
@@ -61,6 +62,24 @@ def evaluate_candidate_artifacts(
         scope_path,
         exclude_substrings=scope.get("exclude_qn_substrings", []),
     )
+    quality = {
+        "configured_files": quality_summary(
+            total=baseline_counts.get("configured_files", 0),
+            affected=(
+                baseline_counts.get("parse_errors", 0)
+                + max(0, baseline_counts.get("configured_files", 0) - staged_count)
+            ),
+        ),
+        "cbm_import_agreement": quality_summary(
+            total=max(comparison["ast_edges"], comparison["cbm_edges"]),
+            affected=len(comparison["missing_from_cbm"])
+            + len(comparison["extra_in_cbm"]),
+        ),
+        "semantic_locality": quality_summary(
+            total=semantic_counts["raw"],
+            affected=semantic_counts["non_local"] + semantic_counts["discarded"],
+        ),
+    }
     checks = {
         "required_artifacts": not missing,
         "configured_files_match_staged": staged_count == baseline_counts.get("configured_files"),
@@ -97,6 +116,7 @@ def evaluate_candidate_artifacts(
         },
         "semantic": semantic_counts,
         "ast_cbm_imports": comparison,
+        "quality": quality,
         "checks": checks,
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
