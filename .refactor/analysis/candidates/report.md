@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T07:20:30
+Generated: 2026-09-16T07:32:47
 
 Project: `refactor_cli`
 
@@ -34,19 +34,19 @@ Example:
 
 | Artifact | Bytes |
 |---|---:|
-| architecture_report.json | 6863 |
+| architecture_report.json | 6885 |
 | dependency_graph.json | 113865 |
 | semantic_retrieval.json | 145629 |
-| source_index.json | 15859 |
+| source_index.json | 16083 |
 | summary.json | 614 |
 
 ```mermaid
 pie showData
   title Artifact Sizes (bytes)
-  "architecture_report.json" : 6863
+  "architecture_report.json" : 6885
   "dependency_graph.json" : 113865
   "semantic_retrieval.json" : 145629
-  "source_index.json" : 15859
+  "source_index.json" : 16083
   "summary.json" : 614
 ```
 
@@ -107,8 +107,8 @@ Examples:
 
 ## Index Health
 
-- Indexed nodes: 45392
-- Indexed edges: 194841
+- Indexed nodes: 45399
+- Indexed edges: 194848
 - Excluded directories shown by the tool: .ruff_cache, .git, docs, .pytest_cache, vendor
 - Partial parse count: 60
 - Not indexed file count: 60
@@ -155,19 +155,19 @@ Hotspots:
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool 12
 - refactor_cli.src.refactor_cli.discovery.resolve_project_root 7
 - refactor_cli.src.refactor_cli.discovery.load_config 7
-- refactor_cli.src.refactor_cli.file_io.write_json 5
 - refactor_cli.src.refactor_cli.config.settings._config_or_default 5
+- refactor_cli.src.refactor_cli.file_io.write_json 5
 - refactor_cli.src.refactor_cli._resolve_candidate_search_settings 5
-- refactor_cli.src.refactor_cli.file_io.load_json 4
-- refactor_cli.src.refactor_cli.discovery.discover_python_files 4
+- refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root 4
+- refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config 4
 
 Clusters:
-- 9 src 44 0.8226 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_mermaid_scoped_edges;_extract_text_content src CALLS
-- 2 src 28 0.7955 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;post_apply_safeguards;ensure_runtime_dependencies src CALLS
-- 0 src 19 0.7317 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;_load_optional_config;_config_or_default src CALLS
-- 1 src 15 0.5128 load_config;resolve_project_root;generate_tree_payload;run_source_index;cmd_format src CALLS
-- 7 src 15 0.6333 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
-- 6 src 14 0.9286 collect_quality_report;_imports;write_quality_report;_python_files;_module_name src CALLS
+- 8 src 44 0.8226 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_mermaid_scoped_edges;_extract_text_content src CALLS
+- 2 src 24 0.775 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;ensure_runtime_dependencies;load_tree_yaml src CALLS
+- 0 src 21 0.7442 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;cmd_quality_report;_config_or_default src CALLS
+- 3 src 19 0.5581 load_config;resolve_project_root;generate_tree_payload;run_source_index;cmd_format src CALLS
+- 1 src 15 0.6333 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
+- 13 src 12 0.9167 collect_quality_report;_imports;_python_files;_module_name;_resolve_relative src CALLS
 
 Entry points:
 - refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
@@ -210,48 +210,51 @@ The current stored `dependency_graph.json` is raw and broad. For clarity, this r
 
 ```mermaid
 flowchart LR
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _load_optional_config["_load_optional_config"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _candidate_analysis_config["_candidate_analysis_config"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_optional_project_root["_resolve_optional_project_root"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| str["str"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _config_or_default["_config_or_default"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| get["get"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| replace["replace"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| resolve_cbm_binary["resolve_cbm_binary"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| int["int"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _semantic_terms_setting["_semantic_terms_setting"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _exclude_substrings_setting["_exclude_substrings_setting"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_path_setting["_resolve_path_setting"]
+  resolve_cbm_binary["resolve_cbm_binary"] -->|CALLS| exists["exists"]
+  _flag_name["_flag_name"] -->|CALLS| replace["replace"]
+  _flag_value["_flag_value"] -->|CALLS| str["str"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| str["str"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_name["_flag_name"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_value["_flag_value"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| run["run"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| _extract_json_line["_extract_json_line"]
+  run_cbm_tool["run_cbm_tool"] -->|CALLS| get["get"]
+  resolve_emend_runner["resolve_emend_runner"] -->|CALLS| _python_module_available["_python_module_available"]
+  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| _python_module_available["_python_module_available"]
+  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| append["append"]
 ```
 
 Highest fan-out functions:
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (13)
-- refactor_cli.src.refactor_cli._resolve_candidate_report_settings (9)
-- refactor_cli.src.refactor_cli._parse_cbm_options (2)
-- refactor_cli.src.refactor_cli._profile_terms_setting (2)
-- refactor_cli.src.refactor_cli._resolve_candidate_search_settings (2)
-- refactor_cli.src.refactor_cli._project_name_default (1)
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool (6)
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (5)
+- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies (3)
+- refactor_cli.src.refactor_cli.runtime_tools.run_autoimport_on_file (3)
+- refactor_cli.src.refactor_cli.runtime_tools.run_formatter_on_file (2)
+- refactor_cli.src.refactor_cli.runtime_tools.run_compile_check_on_file (2)
 
 Highest fan-in targets:
-- builtins.str (5)
-- refactor_cli.src.refactor_cli.config.settings._load_optional_config (3)
-- builtins.dict.get (3)
-- refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config (2)
-- refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root (2)
-- refactor_cli.src.refactor_cli.config.settings._config_or_default (2)
+- builtins.str (9)
+- refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run (6)
+- refactor_cli.src.refactor_cli.runtime_tools._python_module_available (2)
+- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists (1)
+- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace (1)
+- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name (1)
 
 Coherent local edge examples:
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._load_optional_config
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS builtins.str
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._config_or_default
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS builtins.dict.get
+- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value CALLS builtins.str
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS builtins.str
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._extract_json_line
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS builtins.dict.get
 
 Suspicious edge examples:
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
-- refactor_cli.src.refactor_cli._parse_cbm_options CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-12.3361.307667_buggy.stream_of_characters.len
-- refactor_cli.src.refactor_cli._parse_cbm_options CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.resolve_cbm_binary CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
+- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
+- refactor_cli.src.refactor_cli.runtime_tools.run_formatter_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
+- refactor_cli.src.refactor_cli.runtime_tools.run_compile_check_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
+- refactor_cli.src.refactor_cli.runtime_tools.run_autoimport_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
 
 Observation:
 - The graph can recover useful function-level coordination points when the qualified-name scope is set correctly.

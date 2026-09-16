@@ -294,7 +294,7 @@ raw-file interpretation, Mermaid status and relationship diagrams, readiness, in
 health, and architecture findings.
 
 **Usefulness evaluation:** High for human review and handoff. The clean run
-generated a 379-line report and made the raw JSON artifacts considerably easier to
+generated a 382-line report and made the raw JSON artifacts considerably easier to
 compare. It correctly showed CodeRAG as `SKIP` because it was disabled.
 
 **Improvement suggestion:** Add stable section identifiers and a compact machine

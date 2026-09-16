@@ -312,7 +312,7 @@ directory and report path.
 artifact interpretation, Mermaid diagrams, readiness, index health, and findings.
 
 **Usefulness evaluation:** High for human review and handoff. The clean run
-generated a 379-line report and clearly marked CodeRAG as `SKIP` because it was
+generated a 382-line report and clearly marked CodeRAG as `SKIP` because it was
 disabled.
 
 **Improvement suggestion:** Add stable section identifiers, finding counts, and a
