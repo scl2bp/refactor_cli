@@ -1,5 +1,8 @@
 import os
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 from typing import Any
 
 from refactor_cli.analysis.candidate_tools import run_cbm_tool
@@ -17,6 +20,21 @@ def _project_name_from_root(project_root: Path) -> str:
     return project_root.resolve().name
 
 
+def _stage_configured_files(project_root: Path, files: list[Path]) -> Path:
+    staging_root = Path(tempfile.mkdtemp(prefix="refactor-cli-cbm-"))
+    for source in files:
+        relative = source.relative_to(project_root)
+        destination = staging_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    subprocess.run(["git", "init", "-q"], cwd=staging_root, check=True)
+    subprocess.run(["git", "config", "user.email", "refactor-cli@example.invalid"], cwd=staging_root, check=True)
+    subprocess.run(["git", "config", "user.name", "refactor-cli"], cwd=staging_root, check=True)
+    subprocess.run(["git", "add", "."], cwd=staging_root, check=True)
+    subprocess.run(["git", "commit", "-qm", "configured analysis corpus"], cwd=staging_root, check=True)
+    return staging_root
+
+
 def run_source_index(
     *,
     project_root: Path,
@@ -28,6 +46,7 @@ def run_source_index(
     resolved_root = project_root.resolve()
     resolved_name = project_name or _project_name_from_root(resolved_root)
     staged_repo_path = resolved_root
+    staging_root: Path | None = None
     staged_files: list[str] = []
     config_summary: dict[str, Any] | None = None
 
@@ -41,32 +60,34 @@ def run_source_index(
             "project_root": str(config_root),
             "file_count": len(staged_files),
         }
-        # Always index the real project root so CBM can find the .git dir and
-        # parse Python symbols. A staging-dir copy has no .git, so CBM would
-        # only produce Project/Branch metadata nodes with no code content.
-        staged_repo_path = config_root
+        staging_root = _stage_configured_files(config_root, files)
+        staged_repo_path = staging_root
 
-    index_result = run_cbm_tool(
-        cbm_binary,
-        "index_repository",
-        {
-            "repo_path": str(staged_repo_path.resolve()),
-            "mode": mode,
-            "name": resolved_name,
-        },
-        cwd=resolved_root,
-    )
-    if not index_result["ok"] and mode != "fast":
+    try:
         index_result = run_cbm_tool(
             cbm_binary,
             "index_repository",
             {
                 "repo_path": str(staged_repo_path.resolve()),
-                "mode": "fast",
+                "mode": mode,
                 "name": resolved_name,
             },
             cwd=resolved_root,
         )
+        if not index_result["ok"] and mode != "fast":
+            index_result = run_cbm_tool(
+                cbm_binary,
+                "index_repository",
+                {
+                    "repo_path": str(staged_repo_path.resolve()),
+                    "mode": "fast",
+                    "name": resolved_name,
+                },
+                cwd=resolved_root,
+            )
+    finally:
+        if staging_root is not None:
+            shutil.rmtree(staging_root, ignore_errors=True)
 
     projects_result = run_cbm_tool(cbm_binary, "list_projects", {}, cwd=project_root)
 

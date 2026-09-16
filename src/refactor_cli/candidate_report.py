@@ -988,6 +988,11 @@ def build_candidate_report(
     summary = load_json(input_dir / "summary.json")
     scope_policy = summary.get("scope", {})
     source_index = load_json(input_dir / "source_index.json")
+    scope_baseline = (
+        load_json(input_dir / "scope_baseline.json")
+        if (input_dir / "scope_baseline.json").exists()
+        else {"counts": {}}
+    )
     architecture = load_json(input_dir / "architecture_report.json")
     semantic = load_json(input_dir / "semantic_retrieval.json")
     coderag = (
@@ -1003,6 +1008,7 @@ def build_candidate_report(
     structured_index = (
         source_index.get("index", {}).get("payload", {}).get("structuredContent", {})
     )
+    baseline_counts = scope_baseline.get("counts", {})
 
     scoped_architecture = _scoped_architecture(
         project_root=project_root,
@@ -1208,7 +1214,22 @@ def build_candidate_report(
         overall_status = "MANUAL_ONLY"
     elif any(status in {"DEGRADED", "PARTIAL"} for _name, status in readiness_items):
         overall_status = "REVIEWABLE"
+    if semantic_noise["non_local"] or dependency_discarded:
+        main_issue = (
+            "Some relationships leave the configured corpus; they are treated as "
+            "external dependencies and are excluded from internal refactoring evidence."
+        )
+        next_action = (
+            "Inspect the external dependency list and expand configuration only when "
+            "those files are part of the intended refactoring boundary."
+        )
+    else:
+        main_issue = "No scope-crossing relationships were observed in the analyzed results."
+        next_action = "Proceed to AST/CBM agreement checks for individual candidates."
     status_by_module = {
+        "scope_baseline": "FAIL"
+        if baseline_counts.get("parse_errors", 0)
+        else "OK",
         "source_index": index_status,
         "dependency_graph": dependency_status,
         "semantic_retrieval": semantic_status,
@@ -1357,14 +1378,17 @@ Safe for automated refactoring: **{"YES" if overall_status == "READY_FOR_AUTOMAT
 Scope: `{scope_path}`
 
 Configured/staged files: **{len(source_index.get("staged_files", []))}**<br>
+AST parsed files: **{baseline_counts.get("parsed_files", "n/a")}**<br>
+AST internal import edges: **{baseline_counts.get("internal_import_edges", "n/a")}**<br>
+AST external imports: **{baseline_counts.get("external_imports", "n/a")}**<br>
 Partial parses: **{partial_parse_count}**<br>
 Files not indexed: **{not_indexed_count}**<br>
 Out-of-scope dependency rows discarded: **{dependency_discarded}**<br>
 Semantic rows: raw **{semantic_noise["raw"]}**, local **{semantic_noise["local"]}**, non-local **{semantic_noise["non_local"]}**, discarded **{semantic_noise["discarded"]}**
 
-Main issue: successful provider commands can still produce partial or out-of-scope evidence; degraded results remain unsuitable for automated moves.
+Main issue: {main_issue}
 
-Next action: isolate the index or inspect the discarded rows before considering any automated refactoring.
+Next action: {next_action}
 
 | Module | Status |
 |---|---|

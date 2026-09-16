@@ -237,11 +237,44 @@ provider-independent analysis over that scope. `candidate-phase-a` adds external
 index, dependency, semantic, and architecture signals. `candidate-report` presents
 those Phase A artifacts; `candidate-search` is an interactive follow-up query.
 
-The native quality report is authoritative only for what its local AST heuristics
-calculate. Phase A `source_index` is authoritative for index health, scoped graph
-artifacts are authoritative for returned relationships, and semantic results are
-discovery hints. No feature currently provides enough evidence to authorize an
-automated refactoring move without human review.
+The configured file set is the analysis corpus. Repository files outside that set
+are not additional analysis input. They are relevant only when a configured file
+imports, includes, re-exports, or otherwise references them; those references are
+reported as external dependencies. This keeps unrelated `.eval`, vendor, cache,
+documentation, and generated files out of the evidence. Expanding the analysis
+boundary is a configuration change and must be recorded in run provenance.
+
+The AST baseline is authoritative for facts derived from the configured files. The
+native quality report and Phase A CBM outputs must be compared against that same
+baseline before a finding can support automated refactoring. No feature currently
+provides enough evidence to authorize an automated refactoring move without human
+review.
+
+### Chapter 0: Configured-scope AST baseline
+
+**Feature description:** `candidate-phase-a` emits a deterministic,
+provider-independent AST baseline over exactly the files resolved from
+`python_files.include` and `python_files.exclude`.
+
+**Generated file:** `.refactor/analysis/candidates/scope_baseline.json`.
+
+**Generated-file description:** The artifact records configured files, parsed files,
+parse errors, internal `IMPORTS` edges between configured modules, and imports that
+leave the configured corpus. External imports are context, not additional evidence
+that expands the analysis scope.
+
+**Authority and acceptance:** The configured-file count must agree with `files`;
+every configured file must appear in either `parsed_files` or `parse_errors`; and
+internal edges must have both endpoints in the configured module set. Syntax or
+decode failures are visible baseline defects, not successful partial analysis.
+
+**Current status:** Implemented as the first scope-isolation slice. It establishes
+the factual comparison surface for CBM outputs; it does not yet adjudicate AST/CBM
+disagreements or authorize moves.
+
+**Next refinement:** Compare CBM rows with this baseline and report missing, extra,
+and scope-crossing relationships before any candidate is marked reviewable for
+automation.
 
 ### Chapter 1: Configured file discovery
 
@@ -401,6 +434,7 @@ optional `--include-coderag-validate` flag.
 
 **Generated files:**
 
+- `.refactor/analysis/candidates/scope_baseline.json`
 - `.refactor/analysis/candidates/source_index.json`
 - `.refactor/analysis/candidates/dependency_graph.json`
 - `.refactor/analysis/candidates/semantic_retrieval.json`
@@ -408,7 +442,9 @@ optional `--include-coderag-validate` flag.
 - `.refactor/analysis/candidates/summary.json`
 - optional `.refactor/analysis/candidates/coderag_validate.json`
 
-**Generated-file description:** The source index records coverage and parse health;
+**Generated-file description:** The AST scope baseline records the exact configured
+file set, parse health, internal imports, and external imports. The source index
+records CBM coverage and parse health;
 the dependency graph stores `CALLS`, `IMPORTS`, and `INHERITS` rows; semantic
 retrieval stores ranked/grouped hits; architecture reports hotspots, clusters,
 entry points, and graph counts; summary records adapter status.
@@ -424,24 +460,26 @@ check, scoped dependency/architecture data is structural evidence, and semantic
 retrieval is discovery evidence rather than authority. CodeRAG is optional; Emend
 is not required because this feature is read-only.
 
-**Observed result:** All enabled adapters were `OK`; the scoped architecture view
-had 205 nodes and 539 edges, while the broad index had 45,392 nodes, 194,841 edges,
-and 60 partial parses. Artifacts were automatically produced and manually reviewed.
+**Observed result:** The configured corpus contained 19 files. The AST baseline
+parsed all 19 files, found 40 internal import edges and 68 external imports. The
+isolated CBM corpus contained 229 nodes and 1,058 edges with zero partial parses
+and zero unindexed files. Artifacts were automatically produced and manually
+reviewed.
 
-**Assessment and open questions:** Richer than native AST analysis, but not safe for
-automated moves until corpus isolation is fixed. Open questions are how partial
-parses should affect status and whether excluded paths can be removed before ranking.
+**Assessment and open questions:** The corpus boundary is now aligned with the
+configured files, making CBM useful for comparison with AST facts. It is still not
+safe for automated moves until AST/CBM agreement and dynamic Python risks are
+checked. Open questions are how relationship disagreements should be classified.
 
 **Representative task and severity:** A developer should use the architecture report
 to locate the central coordination modules and then inspect dependency edges. Broad
 index contamination is **blocking for automation** but **acceptable for manual
 exploration** when the source index health is reviewed.
 
-**Improvement suggestion (highest-priority technical fix):** Isolate the corpus at
-index creation where the provider supports it, apply post-index filtering as a
-safety net, report discarded rows and their reasons, and warn or fail when results
-escape the configured scope. Add an acceptance test proving that `.eval` and
-vendored paths cannot appear in scoped semantic or graph results.
+**Improvement suggestion (next technical fix):** Compare CBM relationships with the
+AST baseline, report missing and extra edges, and block automation on unexplained
+disagreements. Keep post-query scope filtering as a safety net and add an acceptance
+test proving that `.eval` and vendored paths cannot enter the configured corpus.
 
 ### Chapter 5: Candidate report
 
@@ -541,8 +579,8 @@ counts, and the filtering stage.
 
 ### Evaluation conclusion and next order
 
-The most valuable immediate refinement is corpus isolation because it affects both
-Phase A semantic retrieval and focused search. After that, add quality baselines,
+The most valuable immediate refinement is AST/CBM cross-validation over the isolated
+configured corpus. After that, add quality baselines,
 feature-level artifact tests, optional CodeRAG evaluation, stronger native metrics,
 and continued extraction of the remaining CLI/config/workflow code from
 `__init__.py`. Each refinement should repeat the six chapters from a clean output
@@ -561,7 +599,7 @@ infrastructure, not another feature-specific convenience suggestion.
 ### Refinement priority
 
 1. Automated success and negative-path tests, including exit codes and artifact schemas.
-2. Phase A corpus isolation and semantic-result filtering.
+2. Phase A AST/CBM cross-validation and semantic-result filtering.
 3. Tree schema validation and deterministic output.
 4. Native quality-report baseline comparison and regression status.
 5. Search provenance plus stable report/finding identifiers.

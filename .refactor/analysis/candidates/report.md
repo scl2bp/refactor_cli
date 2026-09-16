@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T17:17:15
+Generated: 2026-09-16T17:51:01
 
 Project: `refactor_cli`
 
@@ -16,29 +16,34 @@ Safe for automated refactoring: **NO**
 
 Scope: `src/refactor_cli`
 
-Configured/staged files: **18**<br>
-Partial parses: **60**<br>
-Files not indexed: **60**<br>
-Out-of-scope dependency rows discarded: **20**<br>
-Semantic rows: raw **100**, local **0**, non-local **0**, discarded **100**
+Configured/staged files: **19**<br>
+AST parsed files: **19**<br>
+AST internal import edges: **40**<br>
+AST external imports: **68**<br>
+Partial parses: **0**<br>
+Files not indexed: **0**<br>
+Out-of-scope dependency rows discarded: **18**<br>
+Semantic rows: raw **100**, local **93**, non-local **7**, discarded **0**
 
-Main issue: successful provider commands can still produce partial or out-of-scope evidence; degraded results remain unsuitable for automated moves.
+Main issue: Some relationships leave the configured corpus; they are treated as external dependencies and are excluded from internal refactoring evidence.
 
-Next action: isolate the index or inspect the discarded rows before considering any automated refactoring.
+Next action: Inspect the external dependency list and expand configuration only when those files are part of the intended refactoring boundary.
 
 | Module | Status |
 |---|---|
-| source_index | DEGRADED |
+| scope_baseline | OK |
+| source_index | OK |
 | dependency_graph | DEGRADED |
-| semantic_retrieval | PARTIAL |
+| semantic_retrieval | DEGRADED |
 | architecture_report | OK |
 | coderag_validate | SKIP |
 
 ```mermaid
 flowchart LR
-  source_index["source_index: DEGRADED"]
+  scope_baseline["scope_baseline: OK"]
+  source_index["source_index: OK"]
   dependency_graph["dependency_graph: DEGRADED"]
-  semantic_retrieval["semantic_retrieval: PARTIAL"]
+  semantic_retrieval["semantic_retrieval: DEGRADED"]
   architecture_report["architecture_report: OK"]
   coderag_validate["coderag_validate: SKIP"]
 ```
@@ -52,20 +57,22 @@ Example:
 
 | Artifact | Bytes |
 |---|---:|
-| architecture_report.json | 6885 |
-| dependency_graph.json | 113865 |
-| semantic_retrieval.json | 145629 |
-| source_index.json | 16083 |
-| summary.json | 614 |
+| architecture_report.json | 6505 |
+| dependency_graph.json | 122457 |
+| scope_baseline.json | 15436 |
+| semantic_retrieval.json | 108356 |
+| source_index.json | 8072 |
+| summary.json | 642 |
 
 ```mermaid
 pie showData
   title Artifact Sizes (bytes)
-  "architecture_report.json" : 6885
-  "dependency_graph.json" : 113865
-  "semantic_retrieval.json" : 145629
-  "source_index.json" : 16083
-  "summary.json" : 614
+  "architecture_report.json" : 6505
+  "dependency_graph.json" : 122457
+  "scope_baseline.json" : 15436
+  "semantic_retrieval.json" : 108356
+  "source_index.json" : 8072
+  "summary.json" : 642
 ```
 
 Example:
@@ -90,7 +97,7 @@ Examples:
 
 | Artifact | Candidate | Input Used | Output Produced | How To Interpret |
 |---|---|---|---|---|
-| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=18 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
+| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=19 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
 | dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE coalesce(s.qn, s.name) STARTS WITH 'refactor_cli.src.refactor_cli' AND NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
 | semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'module', 'architecture', 'transformation', 'quality metrics'], scope hint=src/refactor_cli | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
 | architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on full corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
@@ -107,10 +114,10 @@ Example:
 
 | Capability | Status |
 |---|---|
-| Indexing and project registration | DEGRADED |
+| Indexing and project registration | OK |
 | Scoped architecture extraction | OK |
 | Scoped dependency extraction | DEGRADED |
-| Scoped semantic retrieval signal | PARTIAL |
+| Scoped semantic retrieval signal | DEGRADED |
 | CodeRAG validation | SKIP |
 | Persistent daemon mode | SKIP |
 
@@ -125,11 +132,11 @@ Examples:
 
 ## Index Health
 
-- Indexed nodes: 45399
-- Indexed edges: 194848
-- Excluded directories shown by the tool: .ruff_cache, .git, docs, .pytest_cache, vendor
-- Partial parse count: 60
-- Not indexed file count: 60
+- Indexed nodes: 229
+- Indexed edges: 1058
+- Excluded directories shown by the tool: .git
+- Partial parse count: 0
+- Not indexed file count: 0
 
 Observation:
 - The index succeeded and is large enough for meaningful graph analysis.
@@ -142,7 +149,7 @@ Example:
 
 ## Full-Corpus Architecture Snapshot
 
-- Languages detected in the indexed corpus: Python=18
+- Languages detected in the indexed corpus: Python=19
 - This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
 
 Example:
@@ -152,40 +159,40 @@ Example:
 
 ## Scoped Architecture For `src/refactor_cli`
 
-- Scoped total nodes: 205
-- Scoped total edges: 539
+- Scoped total nodes: 214
+- Scoped total edges: 647
 - Entry point: refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
 
 ```mermaid
 pie showData
   title Scoped Node Labels
-  "Function" : 157
-  "File" : 18
-  "Module" : 18
+  "Function" : 164
+  "File" : 19
+  "Module" : 19
   "Variable" : 8
   "Folder" : 4
 ```
 
 Top scoped edge types:
-- CALLS=217, DEFINES=183, IMPORTS=80, CONTAINS_FILE=18, USAGE=11, CALL_REFERENCE=10
+- CALLS=231, DEFINES=191, IMPORTS=86, SEMANTICALLY_RELATED=80, CONTAINS_FILE=19, USAGE=11
 
 Hotspots:
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool 12
 - refactor_cli.src.refactor_cli.discovery.resolve_project_root 7
 - refactor_cli.src.refactor_cli.discovery.load_config 7
 - refactor_cli.src.refactor_cli.config.settings._config_or_default 5
-- refactor_cli.src.refactor_cli.file_io.write_json 5
-- refactor_cli.src.refactor_cli._resolve_candidate_search_settings 5
+- refactor_cli.src.refactor_cli.config.settings._load_optional_config 5
+- refactor_cli.src.refactor_cli.discovery.discover_python_files 5
 - refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root 4
 - refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config 4
 
 Clusters:
-- 8 src 44 0.8226 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_mermaid_scoped_edges;_extract_text_content src CALLS
-- 2 src 24 0.775 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;ensure_runtime_dependencies;load_tree_yaml src CALLS
-- 0 src 21 0.7442 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;cmd_quality_report;_config_or_default src CALLS
-- 3 src 19 0.5581 load_config;resolve_project_root;generate_tree_payload;run_source_index;cmd_format src CALLS
-- 1 src 15 0.6333 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
-- 13 src 12 0.9167 collect_quality_report;_imports;_python_files;_module_name;_resolve_relative src CALLS
+- 5 src 44 0.8033 build_candidate_report;_mermaid_scoped_edges;_extract_text_content;_architecture_text;_parse_section_lines src CALLS
+- 1 src 28 0.7955 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;post_apply_safeguards;ensure_runtime_dependencies src CALLS
+- 3 src 23 0.6731 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;load_config;_resolve_candidate_report_settings;_load_optional_config src CALLS
+- 0 src 18 0.7308 generate_tree_payload;apply_extract_top_level_symbols;write_tree_yaml;build_updated_source;ensure_parent src CALLS
+- 2 src 18 0.5 cmd_candidate_phase_a;resolve_project_root;run_source_index;discover_python_files;cmd_format src CALLS
+- 6 src 15 0.5484 run_cbm_tool;_configured_semantic_profiles_summary;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
 
 Entry points:
 - refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
@@ -228,39 +235,43 @@ The current stored `dependency_graph.json` is raw and broad. For clarity, this r
 
 ```mermaid
 flowchart LR
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_name["_flag_name"]
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_value["_flag_value"]
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| _extract_json_line["_extract_json_line"]
-  resolve_emend_runner["resolve_emend_runner"] -->|CALLS| _python_module_available["_python_module_available"]
-  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| _python_module_available["_python_module_available"]
-  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| resolve_emend_runner["resolve_emend_runner"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _load_optional_config["_load_optional_config"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _candidate_analysis_config["_candidate_analysis_config"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_optional_project_root["_resolve_optional_project_root"]
-  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _config_or_default["_config_or_default"]
+  split_nodes_by_symbol["split_nodes_by_symbol"] -->|CALLS| statement_name["statement_name"]
+  build_target_module["build_target_module"] -->|CALLS| render_statements["render_statements"]
+  build_updated_source["build_updated_source"] -->|CALLS| is_import_statement["is_import_statement"]
+  build_updated_source["build_updated_source"] -->|CALLS| render_statements["render_statements"]
+  choose_move_from_trees["choose_move_from_trees"] -->|CALLS| build_symbol_index["build_symbol_index"]
+  verify_moved_symbols["verify_moved_symbols"] -->|CALLS| tree_entry_map["tree_entry_map"]
+  build_after_tree_from_edit["build_after_tree_from_edit"] -->|CALLS| build_operation_from_tree_delta["build_operation_from_tree_delta"]
+  build_after_tree_from_edit["build_after_tree_from_edit"] -->|CALLS| apply_operation_to_tree_doc["apply_operation_to_tree_doc"]
+  apply_extract_top_level_symbols["apply_extract_top_level_symbols"] -->|CALLS| load_module["load_module"]
+  apply_extract_top_level_symbols["apply_extract_top_level_symbols"] -->|CALLS| split_nodes_by_symbol["split_nodes_by_symbol"]
+  apply_extract_top_level_symbols["apply_extract_top_level_symbols"] -->|CALLS| build_target_module["build_target_module"]
+  apply_extract_top_level_symbols["apply_extract_top_level_symbols"] -->|CALLS| build_updated_source["build_updated_source"]
 ```
 
 Highest fan-out functions:
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (4)
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool (3)
-- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies (2)
-- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner (1)
+- refactor_cli.src.refactor_cli.transforms.apply_extract_top_level_symbols (4)
+- refactor_cli.src.refactor_cli.transforms.build_updated_source (2)
+- refactor_cli.src.refactor_cli.transforms.build_after_tree_from_edit (2)
+- refactor_cli.src.refactor_cli.transforms.split_nodes_by_symbol (1)
+- refactor_cli.src.refactor_cli.transforms.build_target_module (1)
+- refactor_cli.src.refactor_cli.transforms.choose_move_from_trees (1)
 
 Highest fan-in targets:
-- refactor_cli.src.refactor_cli.runtime_tools._python_module_available (2)
-- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name (1)
-- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value (1)
-- refactor_cli.src.refactor_cli.analysis.candidate_tools._extract_json_line (1)
-- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner (1)
-- refactor_cli.src.refactor_cli.config.settings._load_optional_config (1)
+- refactor_cli.src.refactor_cli.discovery.render_statements (2)
+- refactor_cli.src.refactor_cli.discovery.statement_name (1)
+- refactor_cli.src.refactor_cli.discovery.is_import_statement (1)
+- refactor_cli.src.refactor_cli.transforms.build_symbol_index (1)
+- refactor_cli.src.refactor_cli.transforms.tree_entry_map (1)
+- refactor_cli.src.refactor_cli.transforms.build_operation_from_tree_delta (1)
 
 Coherent local edge examples:
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._extract_json_line
-- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner CALLS refactor_cli.src.refactor_cli.runtime_tools._python_module_available
-- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies CALLS refactor_cli.src.refactor_cli.runtime_tools._python_module_available
-- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies CALLS refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner
+- refactor_cli.src.refactor_cli.transforms.split_nodes_by_symbol CALLS refactor_cli.src.refactor_cli.discovery.statement_name
+- refactor_cli.src.refactor_cli.transforms.build_target_module CALLS refactor_cli.src.refactor_cli.discovery.render_statements
+- refactor_cli.src.refactor_cli.transforms.build_updated_source CALLS refactor_cli.src.refactor_cli.discovery.is_import_statement
+- refactor_cli.src.refactor_cli.transforms.build_updated_source CALLS refactor_cli.src.refactor_cli.discovery.render_statements
+- refactor_cli.src.refactor_cli.transforms.choose_move_from_trees CALLS refactor_cli.src.refactor_cli.transforms.build_symbol_index
+- refactor_cli.src.refactor_cli.transforms.verify_moved_symbols CALLS refactor_cli.src.refactor_cli.transforms.tree_entry_map
 
 Suspicious edge examples:
 - No suspicious cross-corpus edges observed in this sample.
@@ -329,30 +340,30 @@ Configured query findings:
 Evaluation scorecard for the baseline scoped search:
 - local grouped files: 8
 - local grouped rows: 30
-- local ranking rows: 0
-- non-local ranking rows: 0
+- local ranking rows: 93
+- non-local ranking rows: 7
 
 - Local grouped hits in `src/refactor_cli`:
 - src/refactor_cli/__init__.py: `__file__` (File, in=0, out=0)
 - src/refactor_cli/__main__.py: `__file__` (File, in=0, out=0)
-- src/refactor_cli/analysis/candidate_tools.py: `_extract_json_line` (Function, in=1, out=1)
+- src/refactor_cli/analysis/candidate_tools.py: `_extract_json_line` (Function, in=1, out=0)
 - src/refactor_cli/analysis/dependency_graph.py: `EDGE_QUERY` (Variable, in=1, out=0)
-- src/refactor_cli/analysis/quality_report.py: `_complexity` (Function, in=1, out=2)
-- src/refactor_cli/analysis/quality_report.py: `_cycles` (Function, in=1, out=5)
-- src/refactor_cli/analysis/quality_report.py: `_dependency_paths` (Function, in=1, out=5)
+- src/refactor_cli/analysis/quality_report.py: `_complexity` (Function, in=1, out=0)
+- src/refactor_cli/analysis/quality_report.py: `_cycles` (Function, in=1, out=2)
+- src/refactor_cli/analysis/quality_report.py: `_dependency_paths` (Function, in=1, out=2)
 - src/refactor_cli/candidate_report.py: `_architecture_text` (Function, in=1, out=1)
-- src/refactor_cli/candidate_report.py: `_artifact_size_rows` (Function, in=1, out=4)
-- src/refactor_cli/candidate_report.py: `_candidate_input_rows` (Function, in=1, out=1)
+- src/refactor_cli/candidate_report.py: `_artifact_size_rows` (Function, in=1, out=1)
+- src/refactor_cli/candidate_report.py: `_candidate_input_rows` (Function, in=1, out=2)
 
 - Semantic rows split:
-    - local scoped rows: 0
-    - non-local rows: 0
+    - local scoped rows: 93
+    - non-local rows: 7
 
 ```mermaid
 pie showData
   title Semantic Results: Local vs Non-local
-  "local" : 0
-  "non_local" : 0
+  "local" : 93
+  "non_local" : 7
 ```
 
 Observation:

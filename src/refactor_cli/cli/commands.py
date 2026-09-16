@@ -12,12 +12,14 @@ from refactor_cli.config.settings import (
     _load_optional_config,
     _resolve_optional_project_root,
 )
+from refactor_cli.discovery import discover_python_files
 from refactor_cli.analysis.architecture_report import collect_architecture_report
 from refactor_cli.analysis.candidate_tools import run_cbm_tool
 from refactor_cli.analysis.dependency_graph import collect_dependency_graph
 from refactor_cli.analysis.quality_report import write_quality_report
 from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
 from refactor_cli.analysis.source_index import run_coderag_validate_only, run_source_index
+from refactor_cli.analysis.scope_baseline import collect_scope_baseline
 from refactor_cli.candidate_report import build_candidate_report
 from refactor_cli.runtime_tools import ensure_runtime_dependencies
 
@@ -49,6 +51,14 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
     scope_path = settings["scope_path"]
     scope_qn_prefix = settings["scope_qn_prefix"]
     exclude_qn_substrings = settings["exclude_qn_substrings"]
+    config = _load_optional_config(settings["config_path"])
+    configured_files = discover_python_files(project_root, config)
+    scope_baseline = collect_scope_baseline(
+        project_root=project_root,
+        scope_path=(project_root / scope_path),
+        files=configured_files,
+    )
+    write_json(output_dir / "scope_baseline.json", scope_baseline)
 
     dependency = collect_dependency_graph(
         cbm_binary=cbm_binary,
@@ -110,6 +120,7 @@ def cmd_candidate_phase_a(args: argparse.Namespace) -> int:
             "daemon_mode": "out_of_scope",
         },
         "modules": {
+            "scope_baseline": True,
             "source_index": source_index.get("ok", False),
             "dependency_graph": dependency.get("ok", False),
             "semantic_retrieval": semantic.get("ok", False),
