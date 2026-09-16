@@ -715,6 +715,16 @@ def _fallback_dependency_rows(
     return deduped
 
 
+def _baseline_dependency_rows(
+    baseline: dict[str, Any],
+) -> list[tuple[str, str, str]]:
+    return [
+        (row["source"], row.get("relation", "IMPORTS"), row["target"])
+        for row in baseline.get("internal_import_edges", [])
+        if row.get("source") and row.get("target")
+    ]
+
+
 def _search_hit_dependency_rows(
     semantic_doc: dict[str, Any], scope_path: str
 ) -> list[tuple[str, str, str]]:
@@ -957,7 +967,7 @@ def _candidate_input_rows(
         {
             "artifact": "architecture_report.json",
             "candidate": "codebase-memory-mcp",
-            "input": "get_architecture(aspects=overview) on full corpus and scoped path re-query",
+            "input": "get_architecture(aspects=overview) on the configured corpus and scoped path re-query",
             "output": "Human-readable counts, hotspots, clusters, node labels, edge types",
             "interpretation": "Most useful artifact for quickly understanding structure and central coordination points",
         },
@@ -1103,10 +1113,8 @@ def build_candidate_report(
     )
     module_dep_source = "CBM IMPORTS query"
     if not module_dep_rows:
-        module_dep_rows = _fallback_dependency_rows(
-            project_root / scope_path, package_prefix=scope_prefix
-        )
-        module_dep_source = "local AST import fallback"
+        module_dep_rows = _baseline_dependency_rows(scope_baseline)
+        module_dep_source = "AST scope baseline"
 
     if not scoped_dep_rows:
         scoped_dep_rows = module_dep_rows
@@ -1552,14 +1560,14 @@ Example:
 - Add `--cbm-options "--include-connected"` when you want CBM to show connected context around the matches.
 - Use `--cbm-options "--min-degree 1"` to suppress weaker graph noise.
 
-## Full-Corpus Architecture Snapshot
+## Configured-Corpus Architecture Snapshot
 
 - Languages detected in the indexed corpus: {", ".join(f"{name}={count}" for name, count in full_languages[:6])}
-- This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
+- This describes the isolated configured corpus, not the surrounding repository.
 
 Example:
-- This snapshot is useful when you want a quick sanity check on scope contamination.
-- If full-corpus results look too broad, switch to a scoped query with `--scope-path {scope_path}`.
+- This snapshot is useful as a sanity check on the configured analysis corpus.
+- Expand `python_files.include` only when an external dependency becomes part of the intended refactoring boundary.
 - For a tighter class view, add `--label Class`.
 
 ## Scoped Architecture For `{scope_path}`
@@ -1592,8 +1600,10 @@ Example:
 
 ## Scoped Module Dependencies
 
-- Data source: {module_dep_source}
-- Unique module import edges: {len(module_summary['rows'])}
+- Data source: **{module_dep_source}**
+- Unique module import edges: **{len(module_summary['rows'])}**
+- Meaning: each edge is a module importing another module inside the configured scope.
+- This is not a function call graph; use the next section for function-level calls.
 
 {_mermaid_scoped_edges(module_summary['rows'])}
 
@@ -1605,7 +1615,8 @@ Highest fan-in modules:
 
 Observation:
 - Module-level imports show how the package is stitched together structurally.
-- This is the most stable dependency view when function-call extraction is sparse or noisy.
+- AST is the factual fallback when CBM does not return module `IMPORTS` rows.
+- A zero count means no edges were recovered from the named source, not that the package has no imports.
 
 Example:
 - Query module relationships directly with `refactor-cli candidate-search --scope-path {scope_path} --label Function --cbm-options "--relationship IMPORTS"`.

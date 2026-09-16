@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T18:04:39
+Generated: 2026-09-16T18:31:12
 
 Project: `refactor_cli`
 
@@ -61,6 +61,7 @@ Example:
 |---|---:|
 | architecture_report.json | 6505 |
 | dependency_graph.json | 122457 |
+| evaluation.json | 981 |
 | scope_baseline.json | 15436 |
 | semantic_retrieval.json | 108356 |
 | source_index.json | 8072 |
@@ -71,6 +72,7 @@ pie showData
   title Artifact Sizes (bytes)
   "architecture_report.json" : 6505
   "dependency_graph.json" : 122457
+  "evaluation.json" : 981
   "scope_baseline.json" : 15436
   "semantic_retrieval.json" : 108356
   "source_index.json" : 8072
@@ -102,7 +104,7 @@ Examples:
 | source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=19 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
 | dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE coalesce(s.qn, s.name) STARTS WITH 'refactor_cli.src.refactor_cli' AND NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
 | semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'module', 'architecture', 'transformation', 'quality metrics'], scope hint=src/refactor_cli | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
-| architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on full corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
+| architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on the configured corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
 
 Observation:
 - This makes the pipeline traceable. Each artifact can now be judged by the exact input it used, the candidate that produced it, and the meaning of the output.
@@ -164,14 +166,14 @@ Example:
 - Add `--cbm-options "--include-connected"` when you want CBM to show connected context around the matches.
 - Use `--cbm-options "--min-degree 1"` to suppress weaker graph noise.
 
-## Full-Corpus Architecture Snapshot
+## Configured-Corpus Architecture Snapshot
 
 - Languages detected in the indexed corpus: Python=19
-- This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
+- This describes the isolated configured corpus, not the surrounding repository.
 
 Example:
-- This snapshot is useful when you want a quick sanity check on scope contamination.
-- If full-corpus results look too broad, switch to a scoped query with `--scope-path src/refactor_cli`.
+- This snapshot is useful as a sanity check on the configured analysis corpus.
+- Expand `python_files.include` only when an external dependency becomes part of the intended refactoring boundary.
 - For a tighter class view, add `--label Class`.
 
 ## Scoped Architecture For `src/refactor_cli`
@@ -224,23 +226,47 @@ Example:
 
 ## Scoped Module Dependencies
 
-- Data source: local AST import fallback
-- Unique module import edges: 0
+- Data source: **AST scope baseline**
+- Unique module import edges: **40**
+- Meaning: each edge is a module importing another module inside the configured scope.
+- This is not a function call graph; use the next section for function-level calls.
 
 ```mermaid
 flowchart LR
-  no_edges["No local dependency edges found"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| candidate_tools["candidate_tools"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| parser["parser"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| settings["settings"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| discovery["discovery"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| file_io["file_io"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| runtime_tools["runtime_tools"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| transforms["transforms"]
+  refactor_cli["refactor_cli"] -->|IMPORTS| tree_codec["tree_codec"]
+  __main__["__main__"] -->|IMPORTS| refactor_cli["refactor_cli"]
+  architecture_report["architecture_report"] -->|IMPORTS| candidate_tools["candidate_tools"]
+  dependency_graph["dependency_graph"] -->|IMPORTS| candidate_tools["candidate_tools"]
+  semantic_retrieval["semantic_retrieval"] -->|IMPORTS| candidate_tools["candidate_tools"]
 ```
 
 Highest fan-out modules:
-- No module import edges recovered.
+- refactor_cli.cli.commands (13)
+- refactor_cli (8)
+- refactor_cli.transforms (4)
+- refactor_cli.analysis.source_index (2)
+- refactor_cli.candidate_report (2)
+- refactor_cli.cli.parser (2)
 
 Highest fan-in modules:
-- No inbound module import edges recovered.
+- refactor_cli.analysis.candidate_tools (7)
+- refactor_cli.file_io (6)
+- refactor_cli.discovery (5)
+- refactor_cli.runtime_tools (4)
+- refactor_cli (3)
+- refactor_cli.config.settings (2)
 
 Observation:
 - Module-level imports show how the package is stitched together structurally.
-- This is the most stable dependency view when function-call extraction is sparse or noisy.
+- AST is the factual fallback when CBM does not return module `IMPORTS` rows.
+- A zero count means no edges were recovered from the named source, not that the package has no imports.
 
 Example:
 - Query module relationships directly with `refactor-cli candidate-search --scope-path src/refactor_cli --label Function --cbm-options "--relationship IMPORTS"`.

@@ -286,6 +286,26 @@ decision below automation-ready. This is evidence that the two analyzers are clo
 but not interchangeable; disagreement must be explained per edge before an
 automated move can rely on the relationship graph.
 
+### Machine-readable evaluation
+
+`candidate-evaluate` is the acceptance layer for generated Phase A artifacts:
+
+```bash
+refactor-cli candidate-evaluate --config .refactor/config.json
+```
+
+It writes `evaluation.json` with stable Boolean checks, scope and index counts,
+semantic locality counts, AST/CBM import comparison details, and an explicit
+`ready_for_automation` decision. A complete but degraded analysis exits successfully
+with status `DEGRADED`; missing required artifacts produce `FAIL` and a non-zero exit
+code. Semantic acceptance uses the same scope-accounting helper as the Markdown
+report, including discarded rows, so filtered contamination cannot pass merely
+because the remaining rows are local.
+
+The Markdown report remains the human presentation. It may contain richer narrative,
+examples, and diagrams, but `evaluation.json` is the machine contract used by CI or
+an automation controller.
+
 ### Chapter 1: Configured file discovery
 
 **Feature description:** `files` resolves the project root and applies the include

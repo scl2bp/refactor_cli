@@ -9,6 +9,7 @@ from refactor_cli.__init__ import (
 )
 from refactor_cli.candidate_report import (
     _fallback_dependency_rows,
+    _baseline_dependency_rows,
     _optional_demo_artifacts_section,
     _compare_ast_cbm_imports,
     _parse_relation_rows,
@@ -55,6 +56,18 @@ def test_fallback_dependency_rows_are_non_empty_for_package():
         source.endswith("cli.commands") and target.endswith("candidate_report")
         for source, _, target in rows
     )
+
+
+def test_baseline_dependency_rows_are_used_as_authoritative_module_fallback():
+    rows = _baseline_dependency_rows(
+        {
+            "internal_import_edges": [
+                {"source": "demo_pkg", "relation": "IMPORTS", "target": "demo_pkg.api"}
+            ]
+        }
+    )
+
+    assert rows == [("demo_pkg", "IMPORTS", "demo_pkg.api")]
 
 
 def test_parse_relation_rows_handles_generic_cbm_output():
