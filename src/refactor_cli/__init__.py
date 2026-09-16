@@ -375,6 +375,12 @@ def _resolve_candidate_search_settings(args: argparse.Namespace) -> dict[str, An
             or analysis.get("scope_path", ""),
         )
     ).strip()
+    scope_qn_prefix = str(
+        _config_or_default(
+            getattr(args, "scope_qn_prefix", None),
+            analysis.get("scope_qn_prefix") or scope_path.replace("/", "."),
+        )
+    ).strip()
 
     explicit_terms = _parse_semantic_query(args.semantic_query)
     if explicit_terms is not None:
@@ -398,6 +404,7 @@ def _resolve_candidate_search_settings(args: argparse.Namespace) -> dict[str, An
             _config_or_default(args.cbm_binary, analysis.get("cbm_binary"))
         ),
         "semantic_query": semantic_terms,
+        "scope_qn_prefix": scope_qn_prefix,
         "label": _config_or_default(args.label, None),
         "file_pattern": _config_or_default(args.file_pattern, default_file_pattern),
         "limit": int(
@@ -1097,6 +1104,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Semantic terms as JSON array or comma-separated list; overrides profile/config",
     )
     candidate_search_parser.add_argument("--scope-path", default=None)
+    candidate_search_parser.add_argument(
+        "--scope-qn-prefix",
+        default=None,
+        help="Qualified-name prefix used to keep dependency searches inside the configured package scope",
+    )
     candidate_search_parser.add_argument(
         "--file-pattern",
         default=None,
