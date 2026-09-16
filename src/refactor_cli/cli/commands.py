@@ -1,4 +1,5 @@
 import argparse
+import sys
 from refactor_cli import _resolve_candidate_phase_a_settings
 from refactor_cli.file_io import write_json
 from refactor_cli import _resolve_candidate_report_settings
@@ -287,6 +288,21 @@ def cmd_quality_gate(args: argparse.Namespace) -> int:
         arguments.append("--refresh-baseline")
     if args.no_coverage:
         arguments.append("--no-coverage")
+    else:
+        coverage_json = output_dir / "coverage_current.json"
+        arguments.extend(
+            [
+                "--coverage-command",
+                (
+                    f'"{sys.executable}" -m pytest --cache-clear -p no:cacheprovider '
+                    f'--cov=src/refactor_cli --cov-report=json:{coverage_json} -q'
+                ),
+                "--coverage-json-path",
+                str(coverage_json),
+            ]
+        )
+        if args.no_cache:
+            arguments.extend(["--coverage-cache-max-age-minutes", "0"])
     if args.fail_on_gate:
         arguments.append("--strict")
     return run_quality_gate(arguments)

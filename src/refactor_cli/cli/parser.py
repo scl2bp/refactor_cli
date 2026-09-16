@@ -259,6 +259,11 @@ def build_parser() -> argparse.ArgumentParser:
     quality_parser.add_argument("--refresh-baseline", action="store_true")
     quality_parser.add_argument("--no-coverage", action="store_true")
     quality_parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Always run the coverage command instead of reusing fresh coverage data",
+    )
+    quality_parser.add_argument(
         "--fail-on-gate",
         action="store_true",
         help="Return non-zero when the baseline is missing or the quality gate fails",
@@ -276,6 +281,7 @@ def build_parser() -> argparse.ArgumentParser:
     legacy_quality_parser.add_argument("--output-dir", default=None)
     legacy_quality_parser.add_argument("--refresh-baseline", action="store_true")
     legacy_quality_parser.add_argument("--no-coverage", action="store_true")
+    legacy_quality_parser.add_argument("--no-cache", action="store_true")
     legacy_quality_parser.add_argument("--fail-on-gate", action="store_true")
     legacy_quality_parser.set_defaults(func=cmd_quality_report)
 

@@ -120,7 +120,7 @@ refinement decisions are maintained in [docs/refactoring-plan.md](docs/refactori
 | `files` | Developer or LLM agent | Is the configured project boundary correct? | Terminal file list | Required scope check |
 | `tree` | Developer or LLM agent | Which top-level symbols can be moved? | `.refactor/tree.yaml` | Structural planning and verification |
 | `internal-dependencies-report` | Developer or refactoring analysis | Which modules depend on which other modules? | `internal_module_dependencies.json`, `internal_module_dependencies.md` | Graph report; not a quality gate |
-| `quality-gate` | Developer or CI workflow | Did complexity or quality metrics regress against baseline? | `complexity_current.json`, `complexity_baseline.json`, `complexity_report.md` | Baseline-aware gate with optional nonzero failure |
+| `quality-gate` | Developer or CI workflow | Did complexity or quality metrics regress against baseline? | `.refactor/analysis/gate/complexity_current.json`, `.refactor/analysis/gate/complexity_baseline.json`, `.refactor/analysis/gate/complexity_report.md` | Baseline-aware gate with optional nonzero failure |
 | `candidate-phase-a` | Developer or LLM agent | Which relationships and architecture areas need deeper analysis? | Candidate JSON artifacts | Optional external analysis |
 | `candidate-report` | Developer, reviewer, or LLM agent | Which raw finding should be inspected next? | `report.md` | Presentation layer |
 | `candidate-search` | Developer or LLM agent | What focused architectural hypothesis should be checked? | Terminal JSON | Exploratory; not automation-safe |
