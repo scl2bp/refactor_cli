@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T07:32:47
+Generated: 2026-09-16T17:17:15
 
 Project: `refactor_cli`
 
@@ -8,19 +8,37 @@ This report converts the raw Phase A candidate artifacts into a human-readable s
 
 ## Status
 
+Overall readiness: **REVIEWABLE**
+
+Safe for manual exploration: **YES**
+
+Safe for automated refactoring: **NO**
+
+Scope: `src/refactor_cli`
+
+Configured/staged files: **18**<br>
+Partial parses: **60**<br>
+Files not indexed: **60**<br>
+Out-of-scope dependency rows discarded: **20**<br>
+Semantic rows: raw **100**, local **0**, non-local **0**, discarded **100**
+
+Main issue: successful provider commands can still produce partial or out-of-scope evidence; degraded results remain unsuitable for automated moves.
+
+Next action: isolate the index or inspect the discarded rows before considering any automated refactoring.
+
 | Module | Status |
 |---|---|
-| source_index | OK |
-| dependency_graph | OK |
-| semantic_retrieval | OK |
+| source_index | DEGRADED |
+| dependency_graph | DEGRADED |
+| semantic_retrieval | PARTIAL |
 | architecture_report | OK |
 | coderag_validate | SKIP |
 
 ```mermaid
 flowchart LR
-  source_index["source_index: OK"]
-  dependency_graph["dependency_graph: OK"]
-  semantic_retrieval["semantic_retrieval: OK"]
+  source_index["source_index: DEGRADED"]
+  dependency_graph["dependency_graph: DEGRADED"]
+  semantic_retrieval["semantic_retrieval: PARTIAL"]
   architecture_report["architecture_report: OK"]
   coderag_validate["coderag_validate: SKIP"]
 ```
@@ -72,7 +90,7 @@ Examples:
 
 | Artifact | Candidate | Input Used | Output Produced | How To Interpret |
 |---|---|---|---|---|
-| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py, src/refactor_cli/analysis/candidate_tools.py, src/refactor_cli/analysis/dependency_graph.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
+| source_index.json | codebase-memory-mcp | Config-scoped staging repo from .refactor/config.json, files=18 files; sample=src/refactor_cli/__init__.py, src/refactor_cli/__main__.py, src/refactor_cli/analysis/architecture_report.py | Indexed graph metadata: node/edge counts, exclusions, parse warnings, project registration | Tells us whether downstream graph outputs are trustworthy enough to inspect and whether indexing stayed inside the configured file set |
 | dependency_graph.json | codebase-memory-mcp | MATCH (s)-[r:CALLS|IMPORTS|INHERITS]->(t) WHERE coalesce(s.qn, s.name) STARTS WITH 'refactor_cli.src.refactor_cli' AND NOT coalesce(s.qn, s.name) CONTAINS '.eval.' AND NOT coalesce(t.qn, t.name) CONTAINS '.eval.' RETURN coalesce(s.qn, s.name) AS source, type(r) AS relation, coalesce(t.qn, t.name) AS target | Raw CALLS/IMPORTS/INHERITS edge rows capped at max_rows | Useful as machine graph data, but broad queries can mix target code with indexed evaluation repos |
 | semantic_retrieval.json | codebase-memory-mcp | semantic terms=['dependency', 'module', 'architecture', 'transformation', 'quality metrics'], scope hint=src/refactor_cli | Grouped structural matches plus semantic ranking rows with scores | Good for discoverability, but current broad corpus makes semantic ranking noisy |
 | architecture_report.json | codebase-memory-mcp | get_architecture(aspects=overview) on full corpus and scoped path re-query | Human-readable counts, hotspots, clusters, node labels, edge types | Most useful artifact for quickly understanding structure and central coordination points |
@@ -89,12 +107,12 @@ Example:
 
 | Capability | Status |
 |---|---|
-| Indexing and project registration | OK |
+| Indexing and project registration | DEGRADED |
 | Scoped architecture extraction | OK |
-| Scoped dependency extraction | OK |
-| Scoped semantic retrieval signal | OK |
+| Scoped dependency extraction | DEGRADED |
+| Scoped semantic retrieval signal | PARTIAL |
 | CodeRAG validation | SKIP |
-| Persistent daemon mode | OUT_OF_SCOPE |
+| Persistent daemon mode | SKIP |
 
 Policy note:
 - Persistent daemon mode is intentionally not part of this project's operating model.
@@ -210,51 +228,42 @@ The current stored `dependency_graph.json` is raw and broad. For clarity, this r
 
 ```mermaid
 flowchart LR
-  resolve_cbm_binary["resolve_cbm_binary"] -->|CALLS| exists["exists"]
-  _flag_name["_flag_name"] -->|CALLS| replace["replace"]
-  _flag_value["_flag_value"] -->|CALLS| str["str"]
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| str["str"]
   run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_name["_flag_name"]
   run_cbm_tool["run_cbm_tool"] -->|CALLS| _flag_value["_flag_value"]
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| run["run"]
   run_cbm_tool["run_cbm_tool"] -->|CALLS| _extract_json_line["_extract_json_line"]
-  run_cbm_tool["run_cbm_tool"] -->|CALLS| get["get"]
   resolve_emend_runner["resolve_emend_runner"] -->|CALLS| _python_module_available["_python_module_available"]
   ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| _python_module_available["_python_module_available"]
-  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| append["append"]
+  ensure_runtime_dependencies["ensure_runtime_dependencies"] -->|CALLS| resolve_emend_runner["resolve_emend_runner"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _load_optional_config["_load_optional_config"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _candidate_analysis_config["_candidate_analysis_config"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_optional_project_root["_resolve_optional_project_root"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _config_or_default["_config_or_default"]
 ```
 
 Highest fan-out functions:
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool (6)
-- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (5)
-- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies (3)
-- refactor_cli.src.refactor_cli.runtime_tools.run_autoimport_on_file (3)
-- refactor_cli.src.refactor_cli.runtime_tools.run_formatter_on_file (2)
-- refactor_cli.src.refactor_cli.runtime_tools.run_compile_check_on_file (2)
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (4)
+- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool (3)
+- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies (2)
+- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner (1)
 
 Highest fan-in targets:
-- builtins.str (9)
-- refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run (6)
 - refactor_cli.src.refactor_cli.runtime_tools._python_module_available (2)
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists (1)
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace (1)
 - refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name (1)
+- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value (1)
+- refactor_cli.src.refactor_cli.analysis.candidate_tools._extract_json_line (1)
+- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner (1)
+- refactor_cli.src.refactor_cli.config.settings._load_optional_config (1)
 
 Coherent local edge examples:
-- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value CALLS builtins.str
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS builtins.str
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_value
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools._extract_json_line
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS builtins.dict.get
+- refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner CALLS refactor_cli.src.refactor_cli.runtime_tools._python_module_available
+- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies CALLS refactor_cli.src.refactor_cli.runtime_tools._python_module_available
+- refactor_cli.src.refactor_cli.runtime_tools.ensure_runtime_dependencies CALLS refactor_cli.src.refactor_cli.runtime_tools.resolve_emend_runner
 
 Suspicious edge examples:
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.resolve_cbm_binary CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
-- refactor_cli.src.refactor_cli.analysis.candidate_tools._flag_name CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
-- refactor_cli.src.refactor_cli.runtime_tools.run_formatter_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
-- refactor_cli.src.refactor_cli.runtime_tools.run_compile_check_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
-- refactor_cli.src.refactor_cli.runtime_tools.run_autoimport_on_file CALLS refactor_cli.eval.candidates.repo-map.src.repo_map.cli_handler.RepoMapApp.run
+- No suspicious cross-corpus edges observed in this sample.
 
 Observation:
 - The graph can recover useful function-level coordination points when the qualified-name scope is set correctly.

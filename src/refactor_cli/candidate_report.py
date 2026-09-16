@@ -72,11 +72,50 @@ def _parse_scalar_value(text: str, key: str) -> str | None:
 
 
 def _status_label(value: Any) -> str:
+    if isinstance(value, str) and value in {"OK", "DEGRADED", "PARTIAL", "FAIL", "SKIP"}:
+        return value
     if value is True:
         return "OK"
     if value is False:
         return "FAIL"
     return "SKIP"
+
+
+def _trust_status(
+    *,
+    provider_ok: bool,
+    partial: bool = False,
+    discarded: bool = False,
+    usable: bool = True,
+) -> str:
+    if not provider_ok:
+        return "FAIL"
+    if not usable:
+        return "PARTIAL"
+    if partial or discarded:
+        return "DEGRADED"
+    return "OK"
+
+
+def _filter_relation_rows(
+    rows: list[tuple[str, str, str]],
+    scope_prefix: str,
+    exclude_substrings: list[str] | None = None,
+) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+    excluded_tokens = [token for token in (exclude_substrings or []) if token]
+    local: list[tuple[str, str, str]] = []
+    discarded: list[tuple[str, str, str]] = []
+    for row in rows:
+        source, _relation, target = row
+        in_scope = scope_prefix in source and scope_prefix in target
+        excluded = any(
+            token in source or token in target for token in excluded_tokens
+        )
+        if in_scope and not excluded:
+            local.append(row)
+        else:
+            discarded.append(row)
+    return local, discarded
 
 
 def _artifact_size_rows(input_dir: Path) -> list[tuple[str, int]]:
@@ -128,21 +167,27 @@ def _semantic_noise_summary(
     structured = result_doc.get("payload", {}).get("structuredContent", {})
     semantic = structured.get("semantic", {})
     rows = semantic.get("rows", [])
-    excluded_tokens = [token for token in (exclude_substrings or []) if token]
     local = 0
     non_local = 0
+    discarded = 0
     for row in rows:
         if len(row) < 3:
             continue
         qn = str(row[0])
-        file_path = row[2]
-        if any(token in qn or token in str(file_path) for token in excluded_tokens):
+        file_path = str(row[2])
+        if any(token in qn or token in file_path for token in (exclude_substrings or [])):
+            discarded += 1
             continue
-        if str(file_path).startswith(scope_path):
+        if file_path.startswith(scope_path):
             local += 1
         else:
             non_local += 1
-    return {"local": local, "non_local": non_local}
+    return {
+        "raw": len(rows),
+        "local": local,
+        "non_local": non_local,
+        "discarded": discarded,
+    }
 
 
 def _semantic_usage_guidance(scope_path: str) -> list[str]:
@@ -840,7 +885,10 @@ def _candidate_input_rows(
     )
     excluded = structured.get("excluded", {}).get("dirs", [])
     staged_files = source_index.get("staged_files", [])
-    staged_hint = ", ".join(staged_files[:5]) if staged_files else "n/a"
+    staged_hint = (
+        f"{len(staged_files)} files"
+        + (f"; sample={', '.join(staged_files[:3])}" if staged_files else "")
+    )
     return [
         {
             "artifact": "source_index.json",
@@ -975,15 +1023,25 @@ def build_candidate_report(
         cbm_binary=cbm_binary,
     )
     scoped_dep_text = _extract_text_content(scoped_dep.get("payload", {}))
-    scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
+    raw_scoped_dep_rows = _dependency_rows_from_text(scoped_dep_text)
+    scoped_dep_rows, discarded_dependency_rows = _filter_relation_rows(
+        raw_scoped_dep_rows,
+        scope_prefix,
+        scope_policy.get("exclude_qn_substrings", []),
+    )
     module_dep_doc = _scoped_module_dependency_edges(
         project_root=project_root,
         project_name=project_name,
         scope_prefix=scope_prefix,
         cbm_binary=cbm_binary,
     )
-    module_dep_rows = _dependency_rows_from_text(
+    raw_module_dep_rows = _dependency_rows_from_text(
         _extract_text_content(module_dep_doc.get("payload", {}))
+    )
+    module_dep_rows, discarded_module_rows = _filter_relation_rows(
+        raw_module_dep_rows,
+        scope_prefix,
+        scope_policy.get("exclude_qn_substrings", []),
     )
     module_dep_source = "CBM IMPORTS query"
     if not module_dep_rows:
@@ -1003,8 +1061,12 @@ def build_candidate_report(
         scope_prefix=scope_prefix,
         cbm_binary=cbm_binary,
     )
-    class_method_rows = _dependency_rows_from_text(
+    class_method_rows, discarded_class_method_rows = _filter_relation_rows(
+        _dependency_rows_from_text(
         _extract_text_content(class_method_doc.get("payload", {}))
+        ),
+        scope_prefix,
+        scope_policy.get("exclude_qn_substrings", []),
     )
     class_inheritance_doc = _scoped_class_inheritance_edges(
         project_root=project_root,
@@ -1012,8 +1074,12 @@ def build_candidate_report(
         scope_prefix=scope_prefix,
         cbm_binary=cbm_binary,
     )
-    class_inheritance_rows = _dependency_rows_from_text(
+    class_inheritance_rows, discarded_inheritance_rows = _filter_relation_rows(
+        _dependency_rows_from_text(
         _extract_text_content(class_inheritance_doc.get("payload", {}))
+        ),
+        scope_prefix,
+        scope_policy.get("exclude_qn_substrings", []),
     )
 
     scoped_semantic = _scoped_semantic_search(
@@ -1083,6 +1149,26 @@ def build_candidate_report(
         scope_path,
         exclude_substrings=scope_policy.get("exclude_qn_substrings", []),
     )
+    modules = summary["modules"]
+    provider_modules_ok = modules.get("source_index", True) is True
+    partial_parse_count = int(structured_index.get("parse_partial_count", 0) or 0)
+    not_indexed_count = int(structured_index.get("not_indexed_files_count", 0) or 0)
+    index_status = _trust_status(
+        provider_ok=provider_modules_ok,
+        partial=partial_parse_count > 0 or not_indexed_count > 0,
+        usable=bool(structured_index),
+    )
+    dependency_discarded = len(discarded_dependency_rows) + len(discarded_module_rows)
+    dependency_status = _trust_status(
+        provider_ok=bool(scoped_dep.get("ok", True)),
+        discarded=dependency_discarded > 0,
+        usable=bool(scoped_dep_rows),
+    )
+    semantic_status = _trust_status(
+        provider_ok=bool(scoped_semantic.get("ok", True)),
+        discarded=semantic_noise["non_local"] > 0 or semantic_noise["discarded"] > 0,
+        usable=semantic_noise["local"] > 0,
+    )
     module_summary = _relation_counters(module_dep_rows, scope_prefix)
     function_summary = _relation_counters(scoped_dep_rows, scope_prefix)
     class_summary = _relation_counters(class_method_rows, scope_prefix)
@@ -1094,18 +1180,17 @@ def build_candidate_report(
         scope_path=scope_path,
     )
 
-    modules = summary["modules"]
     daemon_policy = scope_policy.get("daemon_mode", "unspecified")
     readiness_items = [
-        ("Indexing and project registration", "OK"),
-        ("Scoped architecture extraction", "OK"),
+        ("Indexing and project registration", index_status),
+        ("Scoped architecture extraction", "OK" if scoped_arch_text else "FAIL"),
         (
             "Scoped dependency extraction",
-            "OK" if scoped_dep_rows else "PARTIAL",
+            dependency_status,
         ),
         (
             "Scoped semantic retrieval signal",
-            ("OK" if local_semantic_stats.get("local_rows", 0) > 0 else "LOW_SIGNAL"),
+            semantic_status,
         ),
         (
             "CodeRAG validation",
@@ -1113,11 +1198,28 @@ def build_candidate_report(
         ),
         (
             "Persistent daemon mode",
-            "OUT_OF_SCOPE" if daemon_policy == "out_of_scope" else "OPTIONAL",
+            "SKIP" if daemon_policy == "out_of_scope" else "OK",
         ),
     ]
+    overall_status = "AUTOMATION_BLOCKED"
+    if all(status == "OK" for _name, status in readiness_items):
+        overall_status = "READY_FOR_AUTOMATION"
+    elif any(status == "FAIL" for _name, status in readiness_items):
+        overall_status = "MANUAL_ONLY"
+    elif any(status in {"DEGRADED", "PARTIAL"} for _name, status in readiness_items):
+        overall_status = "REVIEWABLE"
+    status_by_module = {
+        "source_index": index_status,
+        "dependency_graph": dependency_status,
+        "semantic_retrieval": semantic_status,
+        "architecture_report": "OK" if scoped_arch_text else "FAIL",
+        "coderag_validate": _status_label(coderag.get("ok"))
+        if coderag is not None
+        else "SKIP",
+    }
     status_lines = "\n".join(
-        f"| {name} | {_status_label(value)} |" for name, value in modules.items()
+        f"| {name} | {status_by_module.get(name, _status_label(value))} |"
+        for name, value in modules.items()
     )
 
     size_lines = "\n".join(f"| {name} | {size} |" for name, size in sizes)
@@ -1246,11 +1348,29 @@ This report converts the raw Phase A candidate artifacts into a human-readable s
 
 ## Status
 
+Overall readiness: **{overall_status}**
+
+Safe for manual exploration: **YES**
+
+Safe for automated refactoring: **{"YES" if overall_status == "READY_FOR_AUTOMATION" else "NO"}**
+
+Scope: `{scope_path}`
+
+Configured/staged files: **{len(source_index.get("staged_files", []))}**<br>
+Partial parses: **{partial_parse_count}**<br>
+Files not indexed: **{not_indexed_count}**<br>
+Out-of-scope dependency rows discarded: **{dependency_discarded}**<br>
+Semantic rows: raw **{semantic_noise["raw"]}**, local **{semantic_noise["local"]}**, non-local **{semantic_noise["non_local"]}**, discarded **{semantic_noise["discarded"]}**
+
+Main issue: successful provider commands can still produce partial or out-of-scope evidence; degraded results remain unsuitable for automated moves.
+
+Next action: isolate the index or inspect the discarded rows before considering any automated refactoring.
+
 | Module | Status |
 |---|---|
 {status_lines}
 
-{_mermaid_status(modules)}
+{_mermaid_status(status_by_module)}
 
 Example:
 - Rerun the pipeline with `refactor-cli candidate-phase-a --config .refactor/config.json`.
