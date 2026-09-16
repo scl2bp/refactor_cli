@@ -225,7 +225,7 @@ terminal output:
   `SKIP`, not mistaken for `OK`.
 2. Every expected JSON artifact parses, contains its documented top-level fields,
   and has the expected provider/status metadata.
-3. Tree file count, quality-report file count, and source-index staged-file count
+3. Tree file count, internal-dependency-report file count, and source-index staged-file count
   agree with the configured scope, subject to explicitly reported exclusions.
 4. Report counts can be traced back to the JSON payloads; source links point to
   existing files; Mermaid blocks have the expected opening and closing fences.
@@ -241,7 +241,7 @@ not claims that the failure behavior is correct.
 ### Data flow and authority
 
 `files` defines the configured source boundary. `tree` creates the structural
-inventory used for planning and verification. `quality-report` performs local,
+inventory used for planning and verification. `internal-dependencies-report` performs local,
 provider-independent analysis over that scope. `candidate-phase-a` adds external
 index, dependency, semantic, and architecture signals. `candidate-report` presents
 those Phase A artifacts; `candidate-search` is an interactive follow-up query.
@@ -341,7 +341,7 @@ file is present. Include/exclude conflicts are resolved by the discovery
 implementation, but the command exposes only included files, so exclusion behavior
 is verified by comparing the output with the configured patterns and filesystem.
 
-**Observed result:** 18 Python files were discovered. This is reproducible with the
+**Observed result:** 23 Python files were discovered. This is reproducible with the
 documented command for the same repository state and configuration, not an expected
 count for all projects. The output was manually checked and later commands consumed
 the same scope.
@@ -404,9 +404,9 @@ version, record source/config metadata and parse errors, and emit deterministic
 file/node ordering. A compact JSON count summary is useful later, but should follow
 schema validation and deterministic output rather than replace them.
 
-### Chapter 3: Native quality report
+### Chapter 3: Internal dependency report
 
-**Feature description:** `quality-report` performs local AST analysis without CBM.
+**Feature description:** `internal-dependencies-report` performs local AST analysis without CBM.
 It calculates imports, fan-in/fan-out, cycles, dependency paths, complexity,
 normalized duplicate groups, unused public functions, and high-fan-out move
 candidates.
@@ -414,14 +414,13 @@ candidates.
 **Command and options:**
 
 ```bash
-refactor-cli quality-report \
-  --config .refactor/config.json \
+refactor-cli internal-dependencies-report \
   --scope-path src/refactor_cli \
   --output-dir .refactor/analysis/quality
 ```
 
-**Generated files:** `.refactor/analysis/quality/quality.json` and
-`.refactor/analysis/quality/quality.md`.
+**Generated files:** `.refactor/analysis/quality/internal_module_dependencies.json`
+and `.refactor/analysis/quality/internal_module_dependencies.md`.
 
 **Generated-file description:** JSON contains machine-readable findings. Markdown
 renders dependency tables, cycles, paths, Mermaid, source links, complexity
