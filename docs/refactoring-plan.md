@@ -179,6 +179,70 @@ The features were re-evaluated one by one from a clean state on 2026-09-16. The
 configured scope was `src/refactor_cli`; `.eval` was excluded from dependency
 qualified-name queries. The order below follows the actual information flow.
 
+Each chapter distinguishes feature behavior, observed evidence, and assessment.
+The run used the checked-out repository, the current `.refactor/config.json`, and
+empty analysis output directories. Counts are observations from that run, not
+expected values or acceptance thresholds. Commands were executed automatically;
+tree output, JSON artifacts, and Markdown reports were then inspected manually.
+The analysis commands do not modify source files. Tree and report commands write
+generated artifacts, whose timestamps, ordering, provider versions, and external
+index state may prevent stable byte-for-byte diffs.
+
+### Evaluation protocol
+
+The following provenance must be captured for every repeatable evaluation:
+
+- repository path and commit ID
+- working-tree status, including whether source changes were present
+- Python version and installed package versions
+- Codebase Memory and optional-provider versions
+- exact `.refactor/config.json` contents or a SHA-256 hash of the file
+- whether analysis output directories were empty before the run
+- command, options, exit code, and generated artifact paths
+
+The earlier baseline records the date, repository, configuration, clean output
+directories, commands, exit behavior, and artifact paths, but does not yet record
+all version and commit metadata. Therefore its numeric results are reproducible in
+principle, not a fully pinned experiment.
+
+Known provenance gap: the baseline does not identify a commit ID, working-tree
+status, Python/package lock state, or CBM build/version. Those values must be
+captured before treating a future rerun as a comparable measurement.
+
+For an objectively successful run, apply these checks in addition to reading the
+terminal output:
+
+1. Every command exits with code `0`; an intentional optional skip is reported as
+  `SKIP`, not mistaken for `OK`.
+2. Every expected JSON artifact parses, contains its documented top-level fields,
+  and has the expected provider/status metadata.
+3. Tree file count, quality-report file count, and source-index staged-file count
+  agree with the configured scope, subject to explicitly reported exclusions.
+4. Report counts can be traced back to the JSON payloads; source links point to
+  existing files; Mermaid blocks have the expected opening and closing fences.
+5. Negative cases are treated as acceptance tests: invalid config, syntax errors,
+  missing CBM, malformed candidate JSON, empty search results, include/exclude
+  collisions, and partial indexing must produce a clear error, failure status, or
+  explicit empty result rather than a false `OK`.
+
+The current baseline performed the first four checks only partially through manual
+artifact inspection and did not run the negative cases. Those are evaluation gaps,
+not claims that the failure behavior is correct.
+
+### Data flow and authority
+
+`files` defines the configured source boundary. `tree` creates the structural
+inventory used for planning and verification. `quality-report` performs local,
+provider-independent analysis over that scope. `candidate-phase-a` adds external
+index, dependency, semantic, and architecture signals. `candidate-report` presents
+those Phase A artifacts; `candidate-search` is an interactive follow-up query.
+
+The native quality report is authoritative only for what its local AST heuristics
+calculate. Phase A `source_index` is authoritative for index health, scoped graph
+artifacts are authoritative for returned relationships, and semantic results are
+discovery hints. No feature currently provides enough evidence to authorize an
+automated refactoring move without human review.
+
 ### Chapter 1: Configured file discovery
 
 **Feature description:** `files` resolves the project root and applies the include
@@ -195,11 +259,33 @@ refactor-cli files --config .refactor/config.json
 **Generated-file description:** The terminal output reports the resolved project
 root and discovered Python files.
 
-**Usefulness evaluation:** Essential and reliable. It discovered 18 Python files,
-which became the input for every later evaluation.
+**Intended user and decision:** Developer or LLM agent; decide whether the configured
+project boundary is correct before trusting later analysis. Required as the first
+scope check, not a CI quality gate.
 
-**Improvement suggestion:** Add `--format json` with included files, excluded files,
-and counts so downstream features can consume a recorded discovery manifest.
+**Success/failure:** Success means the resolved root and included files match the
+intended project. Failure means an expected file is missing or an excluded/generated
+file is present. Include/exclude conflicts are resolved by the discovery
+implementation, but the command exposes only included files, so exclusion behavior
+is verified by comparing the output with the configured patterns and filesystem.
+
+**Observed result:** 18 Python files were discovered. This is reproducible with the
+documented command for the same repository state and configuration, not an expected
+count for all projects. The output was manually checked and later commands consumed
+the same scope.
+
+**Assessment and open questions:** Reliable as an input check. Open questions are
+whether overlapping patterns and unreadable files need explicit diagnostics.
+
+**Representative task and severity:** A user should be able to confirm that
+`src/refactor_cli` is included and `.eval` is not. A wrong boundary is **blocking**
+for every downstream analysis; missing exclusion diagnostics are a **convenience**
+issue until they cause contamination.
+
+**Improvement suggestion (convenience, then provenance):** Add `--format json` with
+the resolved root, include/exclude patterns, selected files, excluded files with
+reasons, and a configuration hash. This should remain a read-only manifest and
+become the recorded scope input for downstream reports.
 
 ### Chapter 2: Structural tree analysis
 
@@ -218,11 +304,33 @@ refactor-cli tree --config .refactor/config.json \
 **Generated-file description:** Compact YAML containing 18 files and their modules,
 functions, classes, constants, and other top-level nodes.
 
-**Usefulness evaluation:** High. It is reviewable, deterministic, and provides the
-structural contract checked after `apply-tree-edit` or `apply-tree-patch`.
+**Intended user and decision:** Developer or LLM agent; decide which symbols can be
+moved and whether an applied edit matches the requested structure. Required for the
+tree-edit workflow; optional for standalone quality analysis.
 
-**Improvement suggestion:** Validate the tree schema/version and add a compact JSON
-summary of node counts for easier baseline comparison.
+**Success/failure:** Success means configured files and relevant top-level nodes are
+represented and post-apply verification matches the requested tree. Failure means a
+parse error, missing/misclassified node, or failed tree comparison. The compact tree
+intentionally omits a full AST, call graph, type model, local nested symbols, and
+runtime behavior.
+
+**Observed result:** The run generated an 18-file tree. It was manually inspected
+and automatically regenerated by the CLI. The YAML is reproducible for unchanged
+source/configuration, although ordering or formatter changes may affect diffs.
+
+**Assessment and open questions:** Strong planning and verification boundary. Open
+questions cover syntax-error reporting and which omitted constructs should become
+explicitly represented.
+
+**Representative task and severity:** An LLM agent should identify two top-level
+symbols suitable for a proposed move and verify their destination after an edit.
+Tree omission or misclassification is **blocking** for structural automation;
+omission of nested/runtime details is **acceptable for exploration**.
+
+**Improvement suggestion (blocking correctness):** Validate the tree schema and
+version, record source/config metadata and parse errors, and emit deterministic
+file/node ordering. A compact JSON count summary is useful later, but should follow
+schema validation and deterministic output rather than replace them.
 
 ### Chapter 3: Native quality report
 
@@ -247,13 +355,33 @@ refactor-cli quality-report \
 renders dependency tables, cycles, paths, Mermaid, source links, complexity
 hotspots, duplicates, and unused functions.
 
-**Usefulness evaluation:** High for fast, provider-independent refactoring triage.
-The clean run found 18 modules, no parse errors, 7 move candidates, 0 duplicate
-groups, and 66 unused public-function findings. The metrics are useful signals but
-not release-quality gates.
+**Intended user and decision:** Developer or CI-adjacent refactoring workflow;
+decide which architectural areas merit inspection. Required when provider-independent
+analysis is needed, optional as a supplement to CBM, and not a release gate.
 
-**Improvement suggestion:** Add baseline comparison, cyclomatic complexity,
-maintainability metrics, and regression statuses.
+**Success/failure:** Success means the scope parses and JSON/Markdown are written.
+Failure means parse errors or report-generation errors. Unused-function findings
+can be false positives for public APIs, reflection, plugins, callbacks, exports,
+and dynamic registration. Move candidates are fan-out heuristics, and normalized
+AST duplicate detection can miss semantic/token clones.
+
+**Observed result:** 18 modules, no parse errors, 7 move candidates, 0 duplicate
+groups, and 66 unused public-function findings. These were automatically calculated
+and manually reviewed; they are one-run observations, not expected thresholds.
+
+**Assessment and open questions:** Useful for triage, not a quality gate. Open
+questions are revision-to-revision stability and false-positive rates on dynamic
+Python code.
+
+**Representative task and severity:** A developer should use fan-out and complexity
+rows to choose one module for inspection, then confirm it manually. False positives
+are **acceptable for exploration** but **blocking for automated cleanup**.
+
+**Improvement suggestion (evaluation correctness first):** Add a checked-in baseline
+comparison with explicit regression status for parse errors, cycles, fan-in/fan-out,
+duplicates, unused functions, and move candidates. Treat cyclomatic complexity and
+maintainability metrics as separate follow-up work to avoid mixing baseline
+regression detection with metric expansion.
 
 ### Chapter 4: Candidate Phase A analysis
 
@@ -285,12 +413,35 @@ the dependency graph stores `CALLS`, `IMPORTS`, and `INHERITS` rows; semantic
 retrieval stores ranked/grouped hits; architecture reports hotspots, clusters,
 entry points, and graph counts; summary records adapter status.
 
-**Usefulness evaluation:** High when CBM is available. All enabled adapters were
-`OK`. The scoped architecture view contained 205 nodes and 539 edges, but the
-underlying index contained 45,392 nodes and 194,841 edges with 60 partial parses.
+**Intended user and decision:** Developer or LLM agent; decide which modules,
+relationships, and architectural areas deserve inspection. Optional/experimental
+relative to the native report; it requires the configured CBM executable.
 
-**Improvement suggestion:** Isolate the indexed corpus to the configured source
-scope, filter excluded paths before semantic ranking, and report discarded rows.
+**Success/failure:** `OK` means the adapter completed with a usable payload, not
+that every file parsed perfectly. `FAIL` means an error or unusable payload; `SKIP`
+means disabled or out of scope. When outputs disagree, index health is the trust
+check, scoped dependency/architecture data is structural evidence, and semantic
+retrieval is discovery evidence rather than authority. CodeRAG is optional; Emend
+is not required because this feature is read-only.
+
+**Observed result:** All enabled adapters were `OK`; the scoped architecture view
+had 205 nodes and 539 edges, while the broad index had 45,392 nodes, 194,841 edges,
+and 60 partial parses. Artifacts were automatically produced and manually reviewed.
+
+**Assessment and open questions:** Richer than native AST analysis, but not safe for
+automated moves until corpus isolation is fixed. Open questions are how partial
+parses should affect status and whether excluded paths can be removed before ranking.
+
+**Representative task and severity:** A developer should use the architecture report
+to locate the central coordination modules and then inspect dependency edges. Broad
+index contamination is **blocking for automation** but **acceptable for manual
+exploration** when the source index health is reviewed.
+
+**Improvement suggestion (highest-priority technical fix):** Isolate the corpus at
+index creation where the provider supports it, apply post-index filtering as a
+safety net, report discarded rows and their reasons, and warn or fail when results
+escape the configured scope. Add an acceptance test proving that `.eval` and
+vendored paths cannot appear in scoped semantic or graph results.
 
 ### Chapter 5: Candidate report
 
@@ -311,12 +462,32 @@ directory and report path.
 **Generated-file description:** Markdown with module status, artifact sizes, raw
 artifact interpretation, Mermaid diagrams, readiness, index health, and findings.
 
-**Usefulness evaluation:** High for human review and handoff. The clean run
-generated a 382-line report and clearly marked CodeRAG as `SKIP` because it was
-disabled.
+**Intended user and decision:** Developer, reviewer, or LLM agent; decide which raw
+artifact or finding to inspect next. It is a presentation layer, not an independent
+analyzer or CI gate.
 
-**Improvement suggestion:** Add stable section identifiers, finding counts, and a
-report-diff mode for comparing evaluation runs.
+**Success/failure:** Success means available statuses, sizes, interpretations, and
+diagrams render without inventing findings. Missing or malformed inputs should be
+visible as unavailable/failure states. The report does not adjudicate provider
+conflicts; recommendations are interpretation layered over calculated data.
+
+**Observed result:** A 382-line report was generated and CodeRAG was shown as
+`SKIP`. Generation was automatic and the report was manually inspected. The line
+count is not a stability guarantee.
+
+**Assessment and open questions:** Useful for review and handoff, but timestamps,
+ordering, and external results limit raw diff stability. Open questions are stable
+section IDs, report-diff semantics, and clearer fact-versus-recommendation labels.
+
+**Representative task and severity:** A reviewer should start from the report status,
+open the relevant raw artifact, and identify one follow-up inspection. Mislabeling a
+failed artifact as `OK` is **blocking**; unstable ordering is a **version-control
+convenience** issue.
+
+**Improvement suggestion (report correctness and reproducibility):** Define stable
+finding IDs from finding type, qualified name, source path, and normalized identity,
+never row position. Sort sections and findings deterministically, emit a compact
+machine-readable summary, and only then add report-diff support.
 
 ### Chapter 6: Focused candidate search
 
@@ -340,12 +511,33 @@ Other useful options are `--profile`, `--scope-path`, `--scope-qn-prefix`,
 **Generated-file description:** The result contains grouped structural matches and
 semantic rows with names, labels, source files, scores, and graph degree data.
 
-**Usefulness evaluation:** High for interactive investigation. The clean run found
-157 total matches and returned 20 rows. Semantic results still included `.eval`
-paths, so they require review before driving an automated move.
+**Intended user and decision:** Developer or LLM agent; form a focused architectural
+hypothesis. Optional and exploratory, not a CI gate or automated move authority.
 
-**Improvement suggestion:** Apply path/QN exclusions to semantic rows, add an
-`--output` option, and save query metadata alongside results.
+**Success/failure:** Success means results respect the requested query, label, and
+scope and include query metadata. Failure means CBM is unavailable, the query
+fails, or results escape scope. In this evaluation structural scope worked, but
+semantic rows still included `.eval` paths.
+
+**Observed result:** 157 total matches and 20 rows were returned. Output was
+automatically produced as terminal JSON and manually inspected; counts are one-run
+observations. The command is read-only and writes no artifact unless redirected.
+
+**Assessment and open questions:** Useful for interactive discovery, but semantic
+results are not yet trustworthy for automated refactoring. Open questions are
+pre-ranking exclusion enforcement and stable saved-search metadata across CBM
+versions.
+
+**Representative task and severity:** An LLM agent should locate the dependency
+analysis functions with the documented query and then verify the returned paths
+against the source tree. `.eval` leakage is **blocking for automation** but
+**acceptable for manual exploration** when results are inspected.
+
+**Improvement suggestion (blocking correctness before convenience):** Apply path and
+qualified-name exclusions before ranking and define zero-result behavior explicitly
+as a successful empty result. Saved output and metadata are follow-ups; when added,
+record query parameters, scope, provider/version, configuration hash, discarded-row
+counts, and the filtering stage.
 
 ### Evaluation conclusion and next order
 
@@ -355,6 +547,30 @@ feature-level artifact tests, optional CodeRAG evaluation, stronger native metri
 and continued extraction of the remaining CLI/config/workflow code from
 `__init__.py`. Each refinement should repeat the six chapters from a clean output
 directory and compare the generated artifacts with the previous baseline.
+
+### Cross-cutting acceptance work
+
+Before treating any feature as automation-safe, add automated acceptance tests for
+the documented success and negative-path criteria: invalid configuration, syntax
+errors, missing CBM, malformed candidate artifacts, empty search results,
+include/exclude collisions, and partial indexing. The tests must record command
+exit codes, validate generated artifact schemas and required fields, check scope
+exclusions, and verify report/source-link consistency. This is evaluation
+infrastructure, not another feature-specific convenience suggestion.
+
+### Refinement priority
+
+1. Automated success and negative-path tests, including exit codes and artifact schemas.
+2. Phase A corpus isolation and semantic-result filtering.
+3. Tree schema validation and deterministic output.
+4. Native quality-report baseline comparison and regression status.
+5. Search provenance plus stable report/finding identifiers.
+6. Additional complexity and maintainability metrics.
+
+The first two items are blocking correctness work for automated refactoring. Tree
+and baseline work is required for trustworthy repeated evaluations. Stable IDs,
+saved search metadata, and additional metrics improve reproducibility and
+convenience but should not delay the correctness fixes.
 
 ## Working Rules
 
