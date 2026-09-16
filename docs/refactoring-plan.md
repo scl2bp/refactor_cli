@@ -10,6 +10,11 @@ This refactoring follows the SWE guidance in [docs/swe.md](docs/swe.md):
 
 The current implementation in `src/refactor_cli/__init__.py` mixes package entrypoint, CLI, tree serialization, CST analysis, workflow orchestration, and runtime tool execution. The path below separates those concerns incrementally while preserving behavior after each phase.
 
+The current reports confirm that the extraction has started, but the package still
+has a central coordinator and a CLI dependency cycle. The remaining work should
+prioritize clear boundaries and trustworthy evidence over adding more analysis
+features.
+
 ## Target Architecture
 
 - `src/refactor_cli/__init__.py`
@@ -36,6 +41,10 @@ The current implementation in `src/refactor_cli/__init__.py` mixes package entry
   - apply-and-verify workflow orchestration
 - `src/refactor_cli/cli.py`
   - parser and command handlers
+- `src/refactor_cli/analysis/quality_gate.py`
+  - baseline-aware complexity, lint, duplication, and coverage gate adapter
+- `src/refactor_cli/analysis/internal_dependencies_report.py`
+  - compatibility surface for the provider-independent module graph report
 
 ## Phases
 
@@ -428,9 +437,10 @@ can be false positives for public APIs, reflection, plugins, callbacks, exports,
 and dynamic registration. Move candidates are fan-out heuristics, and normalized
 AST duplicate detection can miss semantic/token clones.
 
-**Observed result:** 18 modules, no parse errors, 7 move candidates, 0 duplicate
-groups, and 66 unused public-function findings. These were automatically calculated
-and manually reviewed; they are one-run observations, not expected thresholds.
+**Observed result:** 23 modules, no parse errors, 8 move candidates, 0 duplicate
+groups, and 71 unused-function findings. These are heuristic, one-run observations,
+not removal instructions; public APIs, CLI handlers, callbacks, and dynamic
+registration can be reported as unused.
 
 **Assessment and open questions:** Useful for triage, not a quality gate. Open
 questions are revision-to-revision stability and false-positive rates on dynamic
@@ -490,9 +500,9 @@ check, scoped dependency/architecture data is structural evidence, and semantic
 retrieval is discovery evidence rather than authority. CodeRAG is optional; Emend
 is not required because this feature is read-only.
 
-**Observed result:** The configured corpus contained 19 files. The AST baseline
-parsed all 19 files, found 40 internal import edges and 68 external imports. The
-isolated CBM corpus contained 229 nodes and 1,058 edges with zero partial parses
+**Observed result:** The configured corpus contained 23 files. The AST baseline
+parsed all 23 files, found 47 internal import edges and 79 external imports. The
+isolated CBM corpus contained 250 nodes and 1,189 edges with zero partial parses
 and zero unindexed files. Artifacts were automatically produced and manually
 reviewed.
 
@@ -539,7 +549,7 @@ diagrams render without inventing findings. Missing or malformed inputs should b
 visible as unavailable/failure states. The report does not adjudicate provider
 conflicts; recommendations are interpretation layered over calculated data.
 
-**Observed result:** A 382-line report was generated and CodeRAG was shown as
+**Observed result:** A 490-line report was generated and CodeRAG was shown as
 `SKIP`. Generation was automatic and the report was manually inspected. The line
 count is not a stability guarantee.
 
@@ -607,14 +617,65 @@ as a successful empty result. Saved output and metadata are follow-ups; when add
 record query parameters, scope, provider/version, configuration hash, discarded-row
 counts, and the filtering stage.
 
-### Evaluation conclusion and next order
+## Current Project Assessment
 
-The most valuable immediate refinement is AST/CBM cross-validation over the isolated
-configured corpus. After that, add quality baselines,
-feature-level artifact tests, optional CodeRAG evaluation, stronger native metrics,
-and continued extraction of the remaining CLI/config/workflow code from
-`__init__.py`. Each refinement should repeat the six chapters from a clean output
-directory and compare the generated artifacts with the previous baseline.
+The project is structurally healthy enough for continued manual refactoring:
+all 23 configured files parse, all configured files are indexed, and the quality
+gate passes against its refreshed baseline. It is not yet safe for automated moves.
+The candidate evaluation is `DEGRADED`, with 45/47 AST/CBM import edges agreeing
+and 94/100 semantic rows local to the configured scope. The three unexplained
+import differences and six non-local semantic rows must remain visible as
+uncertainty, not be converted into refactoring actions.
+
+The complexity gate is a regression gate, not an absolute quality grade. The
+current snapshot has average cyclomatic complexity 5.299, one F-ranked block,
+three D-or-worse blocks, 35 Ruff findings, three duplicate pairs, six unused
+top-level functions in the gate's narrower heuristic, and 39.99% fresh coverage.
+The separate dependency report finds 71 unused functions; this disagreement is
+expected from different heuristics and means neither count should drive automated
+deletion.
+
+### Highest-value Technical Debt
+
+1. **Central coordination and dependency cycle.** `__init__.py` remains the package
+  entrypoint, public API, and home for command/workflow logic. `cli.commands` has
+  fan-out 15, and the dependency report shows a cycle through `refactor_cli` and
+  `cli.parser`. Complete the thin CLI shell and make the package entrypoint export
+  stable functions only. This is the primary cohesion and coupling issue.
+2. **Untyped workflow boundaries.** Commands pass `argparse.Namespace` and loosely
+  shaped dictionaries between configuration, analysis, and report layers. Add
+  small typed models for resolved project settings, analysis artifacts, and gate
+  results before adding more adapters. This reduces hidden contracts without
+  introducing a general framework.
+3. **Insufficient behavioral coverage for refactoring operations.** Fresh coverage
+  is 39.99%, with particularly low coverage in `transforms.py`, `safeguards.py`,
+  `discovery.py`, and `tree_codec.py`. Add focused tests for move application,
+  rollback/safeguards, malformed trees, and CLI exit codes. Raise the coverage
+  threshold only after those behavior tests exist; do not treat coverage alone as
+  proof of correctness.
+4. **Analysis-provider disagreement.** Keep AST as the authority for configured
+  scope and module imports. Filter semantic rows before ranking and classify the
+  two missing plus one extra CBM import edge. Automated refactoring should remain
+  blocked while these differences are unexplained.
+
+### Deliberately Deferred
+
+- Do not remove the 71 unused-function findings automatically; validate exports,
+  callbacks, plugin entry points, and CLI registration first.
+- Do not optimize the one F-ranked `build_candidate_report` block before adding
+  characterization tests; it is a maintainability target, not evidence of a bug.
+- Do not add CodeRAG or more metrics until the package boundary, test coverage, and
+  report provenance are stable.
+
+### Recommended Next Order
+
+1. Extract parser/handlers and remaining transition orchestration from `__init__.py`;
+  remove the `refactor_cli` <-> `cli` cycle.
+2. Introduce narrow typed models at config, command-result, and artifact boundaries.
+3. Add focused behavior and negative-path tests, then retain the fresh coverage
+  gate with `--no-cache` in CI.
+4. Finish AST/CBM disagreement classification and pre-ranking semantic filtering.
+5. Only then consider further complexity decomposition and stricter thresholds.
 
 ### Cross-cutting acceptance work
 
@@ -628,12 +689,12 @@ infrastructure, not another feature-specific convenience suggestion.
 
 ### Refinement priority
 
-1. Automated success and negative-path tests, including exit codes and artifact schemas.
-2. Phase A AST/CBM cross-validation and semantic-result filtering.
-3. Tree schema validation and deterministic output.
-4. Native quality-report baseline comparison and regression status.
-5. Search provenance plus stable report/finding identifiers.
-6. Additional complexity and maintainability metrics.
+1. Extract the remaining CLI/workflow coordinator and remove the module cycle.
+2. Introduce typed models for configuration and artifact contracts.
+3. Add automated success and negative-path tests, including exit codes and schemas.
+4. Complete AST/CBM cross-validation and pre-ranking semantic filtering.
+5. Validate tree schema and deterministic report/finding identifiers.
+6. Tighten quality thresholds only after behavior coverage improves.
 
 The first two items are blocking correctness work for automated refactoring. Tree
 and baseline work is required for trustworthy repeated evaluations. Stable IDs,
