@@ -104,6 +104,99 @@ section): project name, CBM binary, scope path, semantic terms, and limit.
 If you run it from inside a project directory, the command will look for `.refactor/config.json`
 in the current folder or any parent folder automatically.
 
+## Code Analysis and Quality Features
+
+### Structural tree analysis
+
+`tree` discovers the configured Python files and records their top-level structure
+in `.refactor/tree.yaml`. The tree includes modules, functions, classes, constants,
+and other top-level nodes. It is the planning and verification boundary for
+structural refactoring.
+
+### Native quality report
+
+`quality-report` performs a local AST-based analysis without requiring CBM. It
+reports:
+
+- module import dependencies, fan-in, and fan-out
+- dependency cycles and short dependency paths
+- Mermaid dependency diagrams and source-file links
+- function complexity hotspots
+- normalized AST duplicate groups
+- unused public top-level functions
+- high fan-out modules as move candidates
+
+It writes `quality.json` and `quality.md` to the selected output directory. The
+default is `.refactor/analysis/quality/`. The report is a refactoring signal, not a
+replacement for tests, coverage, or a full static type checker. Complexity is a
+small AST heuristic, and unused-function detection is intentionally conservative.
+
+### Candidate analysis pipeline
+
+`candidate-phase-a` runs configured adapters over Codebase Memory tooling and writes:
+
+- `source_index.json`: indexed files, node/edge counts, exclusions, and parse health
+- `dependency_graph.json`: scoped `CALLS`, `IMPORTS`, and `INHERITS` rows
+- `semantic_retrieval.json`: grouped structural matches and semantic search results
+- `architecture_report.json`: hotspots, clusters, entry points, node labels, and edge types
+- `summary.json`: status for each pipeline module
+- `coderag_validate.json`: optional CodeRAG validation when enabled
+
+The default directory is `.refactor/analysis/candidates/`. `candidate-report`
+renders these artifacts into `report.md`, including status, artifact sizes, Mermaid
+diagrams, input/output interpretation, readiness, and index-health sections.
+
+`candidate-search` is the focused interactive form of the same discovery capability.
+It accepts semantic terms, labels, scopes, limits, and additional CBM graph flags.
+Use it to investigate a specific architectural question without rebuilding the full
+Phase A artifact set.
+
+### Evaluation commands and generated files
+
+The following commands evaluate the complete analysis surface from the repository
+root. The configured scope is `src/refactor_cli`.
+
+```bash
+refactor-cli files
+refactor-cli tree --print
+refactor-cli quality-report \
+  --config .refactor/config.json \
+  --scope-path src/refactor_cli \
+  --output-dir .refactor/analysis/quality
+refactor-cli candidate-phase-a --config .refactor/config.json
+refactor-cli candidate-report --config .refactor/config.json
+refactor-cli candidate-search \
+  --config .refactor/config.json \
+  --semantic-query 'dependency,module,quality metrics' \
+  --label Function \
+  --limit 20
+```
+
+These runs update or generate:
+
+| File | Produced by | Purpose |
+|---|---|---|
+| `.refactor/tree.yaml` | `tree` | Current structural inventory |
+| `.refactor/analysis/quality/quality.json` | `quality-report` | Machine-readable native quality data |
+| `.refactor/analysis/quality/quality.md` | `quality-report` | Human-readable native quality report |
+| `.refactor/analysis/candidates/source_index.json` | `candidate-phase-a` | Index health and staged-file coverage |
+| `.refactor/analysis/candidates/dependency_graph.json` | `candidate-phase-a` | Raw scoped dependency edges |
+| `.refactor/analysis/candidates/semantic_retrieval.json` | `candidate-phase-a` | Semantic and structural retrieval results |
+| `.refactor/analysis/candidates/architecture_report.json` | `candidate-phase-a` | Architecture overview and hotspots |
+| `.refactor/analysis/candidates/summary.json` | `candidate-phase-a` | Pipeline status summary |
+| `.refactor/analysis/candidates/report.md` | `candidate-report` | Consolidated readable candidate report |
+| terminal JSON output | `candidate-search` | Focused query results; no artifact is written |
+
+On 2026-09-16, the configured project evaluation found 18 Python files. The native
+report found no parse errors, 7 high-fan-out move candidates, 0 duplicate groups,
+and 66 unused public-function findings. Phase A completed with source indexing,
+dependency extraction, semantic retrieval, and architecture reporting marked `OK`;
+CodeRAG was `SKIP` because it is disabled in the configuration. CBM reported 205
+scoped nodes and 539 scoped edges in the architecture view, while the full index
+contained 45,392 nodes and 194,841 edges. The broad index also reported 60 partial
+parses, so raw semantic results must be reviewed with the configured scope and
+exclusion settings.
+
 ## Quick Start
 
 ### 1. Initialize project metadata

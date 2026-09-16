@@ -1,6 +1,6 @@
 # Candidate Analysis Report
 
-Generated: 2026-09-16T06:19:49
+Generated: 2026-09-16T07:20:30
 
 Project: `refactor_cli`
 
@@ -34,23 +34,19 @@ Example:
 
 | Artifact | Bytes |
 |---|---:|
-| architecture_report.json | 6603 |
-| coderag_validate.json | 201 |
-| dependency_graph.json | 95457 |
-| semantic_profile_runs.json | 8021 |
-| semantic_retrieval.json | 148162 |
-| source_index.json | 15931 |
+| architecture_report.json | 6863 |
+| dependency_graph.json | 113865 |
+| semantic_retrieval.json | 145629 |
+| source_index.json | 15859 |
 | summary.json | 614 |
 
 ```mermaid
 pie showData
   title Artifact Sizes (bytes)
-  "architecture_report.json" : 6603
-  "coderag_validate.json" : 201
-  "dependency_graph.json" : 95457
-  "semantic_profile_runs.json" : 8021
-  "semantic_retrieval.json" : 148162
-  "source_index.json" : 15931
+  "architecture_report.json" : 6863
+  "dependency_graph.json" : 113865
+  "semantic_retrieval.json" : 145629
+  "source_index.json" : 15859
   "summary.json" : 614
 ```
 
@@ -111,9 +107,9 @@ Examples:
 
 ## Index Health
 
-- Indexed nodes: 45506
-- Indexed edges: 196730
-- Excluded directories shown by the tool: .ruff_cache, .git, docs, .pytest_cache, .refactor/patches
+- Indexed nodes: 45392
+- Indexed edges: 194841
+- Excluded directories shown by the tool: .ruff_cache, .git, docs, .pytest_cache, vendor
 - Partial parse count: 60
 - Not indexed file count: 60
 
@@ -128,7 +124,7 @@ Example:
 
 ## Full-Corpus Architecture Snapshot
 
-- Languages detected in the indexed corpus: Python=14
+- Languages detected in the indexed corpus: Python=18
 - This confirms that the full graph is dominated by the evaluation repositories, not just the target package.
 
 Example:
@@ -138,40 +134,40 @@ Example:
 
 ## Scoped Architecture For `src/refactor_cli`
 
-- Scoped total nodes: 180
-- Scoped total edges: 463
+- Scoped total nodes: 205
+- Scoped total edges: 539
 - Entry point: refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
 
 ```mermaid
 pie showData
   title Scoped Node Labels
-  "Function" : 142
-  "File" : 14
-  "Module" : 14
+  "Function" : 157
+  "File" : 18
+  "Module" : 18
   "Variable" : 8
-  "Folder" : 2
+  "Folder" : 4
 ```
 
 Top scoped edge types:
-- CALLS=199, DEFINES=164, IMPORTS=48, USAGE=20, CONTAINS_FILE=14, SIMILAR_TO=8
+- CALLS=217, DEFINES=183, IMPORTS=80, CONTAINS_FILE=18, USAGE=11, CALL_REFERENCE=10
 
 Hotspots:
 - refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool 12
 - refactor_cli.src.refactor_cli.discovery.resolve_project_root 7
 - refactor_cli.src.refactor_cli.discovery.load_config 7
 - refactor_cli.src.refactor_cli.file_io.write_json 5
+- refactor_cli.src.refactor_cli.config.settings._config_or_default 5
 - refactor_cli.src.refactor_cli._resolve_candidate_search_settings 5
 - refactor_cli.src.refactor_cli.file_io.load_json 4
-- refactor_cli.src.refactor_cli.candidate_report._scope_filter 4
-- refactor_cli.src.refactor_cli._config_or_default 4
+- refactor_cli.src.refactor_cli.discovery.discover_python_files 4
 
 Clusters:
-- 8 src 40 0.7797 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_extract_text_content;_architecture_text src CALLS
-- 1 src 23 0.68 load_config;cmd_apply_tree_patch;cmd_apply_tree_edit;resolve_project_root;run_source_index src CALLS
-- 4 src 17 0.7429 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;_load_optional_config;_config_or_default src CALLS
-- 7 src 17 0.68 run_tree_transition;post_apply_safeguards;apply_extract_top_level_symbols_emend;build_after_tree_from_edit;build_symbol_index src CALLS
-- 0 src 16 0.6452 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
-- 2 src 16 0.7391 generate_tree_payload;apply_extract_top_level_symbols;write_tree_yaml;build_updated_source;ensure_parent src CALLS
+- 9 src 44 0.8226 build_candidate_report;_configured_semantic_profiles_summary;_scoped_semantic_search;_mermaid_scoped_edges;_extract_text_content src CALLS
+- 2 src 28 0.7955 run_tree_transition;cmd_apply_tree_patch;cmd_apply_tree_edit;post_apply_safeguards;ensure_runtime_dependencies src CALLS
+- 0 src 19 0.7317 _resolve_candidate_search_settings;_resolve_candidate_phase_a_settings;_resolve_candidate_report_settings;_load_optional_config;_config_or_default src CALLS
+- 1 src 15 0.5128 load_config;resolve_project_root;generate_tree_payload;run_source_index;cmd_format src CALLS
+- 7 src 15 0.6333 run_cbm_tool;cmd_candidate_phase_a;_scope_filter;_scoped_dependency_edges;_scoped_module_dependency_edges src CALLS
+- 6 src 14 0.9286 collect_quality_report;_imports;write_quality_report;_python_files;_module_name src CALLS
 
 Entry points:
 - refactor_cli.src.refactor_cli.main src/refactor_cli/__init__.py
@@ -214,51 +210,48 @@ The current stored `dependency_graph.json` is raw and broad. For clarity, this r
 
 ```mermaid
 flowchart LR
-  collect_semantic_retrieval["collect_semantic_retrieval"] -->|CALLS| run_cbm_tool["run_cbm_tool"]
-  collect_dependency_graph["collect_dependency_graph"] -->|CALLS| append["append"]
-  collect_dependency_graph["collect_dependency_graph"] -->|CALLS| replace["replace"]
-  collect_dependency_graph["collect_dependency_graph"] -->|CALLS| run_cbm_tool["run_cbm_tool"]
-  collect_architecture_report["collect_architecture_report"] -->|CALLS| len["len"]
-  collect_architecture_report["collect_architecture_report"] -->|CALLS| run_cbm_tool["run_cbm_tool"]
-  load_config["load_config"] -->|CALLS| exists["exists"]
-  load_config["load_config"] -->|CALLS| load_json["load_json"]
-  resolve_project_root["resolve_project_root"] -->|CALLS| get["get"]
-  discover_python_files["discover_python_files"] -->|CALLS| get["get"]
-  discover_python_files["discover_python_files"] -->|CALLS| sorted["sorted"]
-  discover_python_files["discover_python_files"] -->|CALLS| match["match"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _load_optional_config["_load_optional_config"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _candidate_analysis_config["_candidate_analysis_config"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_optional_project_root["_resolve_optional_project_root"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| str["str"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _config_or_default["_config_or_default"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| get["get"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| replace["replace"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| resolve_cbm_binary["resolve_cbm_binary"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| int["int"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _semantic_terms_setting["_semantic_terms_setting"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _exclude_substrings_setting["_exclude_substrings_setting"]
+  _resolve_candidate_phase_a_settings["_resolve_candidate_phase_a_settings"] -->|CALLS| _resolve_path_setting["_resolve_path_setting"]
 ```
 
 Highest fan-out functions:
-- refactor_cli.src.refactor_cli.discovery.generate_tree_payload (6)
-- refactor_cli.src.refactor_cli.discovery.discover_python_files (4)
-- refactor_cli.src.refactor_cli.analysis.dependency_graph.collect_dependency_graph (3)
-- refactor_cli.src.refactor_cli.tree_codec.write_tree_yaml (3)
-- refactor_cli.src.refactor_cli.analysis.architecture_report.collect_architecture_report (2)
-- refactor_cli.src.refactor_cli.discovery.load_config (2)
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings (13)
+- refactor_cli.src.refactor_cli._resolve_candidate_report_settings (9)
+- refactor_cli.src.refactor_cli._parse_cbm_options (2)
+- refactor_cli.src.refactor_cli._profile_terms_setting (2)
+- refactor_cli.src.refactor_cli._resolve_candidate_search_settings (2)
+- refactor_cli.src.refactor_cli._project_name_default (1)
 
 Highest fan-in targets:
-- builtins.dict.get (5)
-- builtins.list.append (4)
-- refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool (3)
-- builtins.len (2)
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace (1)
-- refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists (1)
+- builtins.str (5)
+- refactor_cli.src.refactor_cli.config.settings._load_optional_config (3)
+- builtins.dict.get (3)
+- refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config (2)
+- refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root (2)
+- refactor_cli.src.refactor_cli.config.settings._config_or_default (2)
 
 Coherent local edge examples:
-- refactor_cli.src.refactor_cli.analysis.semantic_retrieval.collect_semantic_retrieval CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool
-- refactor_cli.src.refactor_cli.analysis.dependency_graph.collect_dependency_graph CALLS builtins.list.append
-- refactor_cli.src.refactor_cli.analysis.dependency_graph.collect_dependency_graph CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool
-- refactor_cli.src.refactor_cli.analysis.architecture_report.collect_architecture_report CALLS builtins.len
-- refactor_cli.src.refactor_cli.analysis.architecture_report.collect_architecture_report CALLS refactor_cli.src.refactor_cli.analysis.candidate_tools.run_cbm_tool
-- refactor_cli.src.refactor_cli.discovery.load_config CALLS refactor_cli.src.refactor_cli.file_io.load_json
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._load_optional_config
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._candidate_analysis_config
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._resolve_optional_project_root
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS builtins.str
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.src.refactor_cli.config.settings._config_or_default
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS builtins.dict.get
 
 Suspicious edge examples:
-- refactor_cli.src.refactor_cli.analysis.dependency_graph.collect_dependency_graph CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
-- refactor_cli.src.refactor_cli.discovery.load_config CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-10.3237.Main.exists
-- refactor_cli.src.refactor_cli.discovery.discover_python_files CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-11.3299.Main.sorted
-- refactor_cli.src.refactor_cli.discovery.discover_python_files CALLS refactor_cli.eval.candidates.codebase-memory-mcp.src.cypher.cypher.match
-- refactor_cli.src.refactor_cli.tree_codec._compact_to_node CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-11.3299.305681_correct.partition
-- refactor_cli.src.refactor_cli.tree_codec._compact_to_node CALLS refactor_cli.eval.candidates.codebase-memory-mcp.internal.cbm.lsp.scope.CBMScopeChunk.next
+- refactor_cli.src.refactor_cli._resolve_candidate_phase_a_settings CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
+- refactor_cli.src.refactor_cli._parse_cbm_options CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-12.3361.307667_buggy.stream_of_characters.len
+- refactor_cli.src.refactor_cli._parse_cbm_options CALLS refactor_cli.eval.candidates.InvAASTCluster.ITSP-dataset.Lab-7.3079.295540_correct.replace
 
 Observation:
 - The graph can recover useful function-level coordination points when the qualified-name scope is set correctly.
@@ -328,16 +321,16 @@ Evaluation scorecard for the baseline scoped search:
 - non-local ranking rows: 0
 
 - Local grouped hits in `src/refactor_cli`:
-- src/refactor_cli/__init__.py: `DEFAULT_APPLIED_PATCHES_DIR` (Variable, in=1, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_CANDIDATE_OUTPUT_DIR` (Variable, in=3, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_CANDIDATE_REPORT` (Variable, in=1, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_CONFIG` (Variable, in=2, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_TREE` (Variable, in=1, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_TREE_EDIT` (Variable, in=1, out=0)
-- src/refactor_cli/__init__.py: `DEFAULT_TREE_PATCH` (Variable, in=1, out=0)
 - src/refactor_cli/__init__.py: `__file__` (File, in=0, out=0)
 - src/refactor_cli/__main__.py: `__file__` (File, in=0, out=0)
-- src/refactor_cli/__init__.py: `_candidate_analysis_config` (Function, in=3, out=1)
+- src/refactor_cli/analysis/candidate_tools.py: `_extract_json_line` (Function, in=1, out=1)
+- src/refactor_cli/analysis/dependency_graph.py: `EDGE_QUERY` (Variable, in=1, out=0)
+- src/refactor_cli/analysis/quality_report.py: `_complexity` (Function, in=1, out=2)
+- src/refactor_cli/analysis/quality_report.py: `_cycles` (Function, in=1, out=5)
+- src/refactor_cli/analysis/quality_report.py: `_dependency_paths` (Function, in=1, out=5)
+- src/refactor_cli/candidate_report.py: `_architecture_text` (Function, in=1, out=1)
+- src/refactor_cli/candidate_report.py: `_artifact_size_rows` (Function, in=1, out=4)
+- src/refactor_cli/candidate_report.py: `_candidate_input_rows` (Function, in=1, out=1)
 
 - Semantic rows split:
     - local scoped rows: 0
@@ -383,4 +376,4 @@ More detail options:
 
 ## Optional Provider Note
 
-- CodeRAG status: `SKIP`. Reason: Missing required Neo4j environment variables.
+- CodeRAG validation artifact not present.

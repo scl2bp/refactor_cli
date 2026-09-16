@@ -173,6 +173,97 @@ Move tree delta interpretation and apply/verify orchestration into a dedicated w
 
 Move parser and command handlers into `cli.py`, leaving `__init__.py` as a small export surface.
 
+## Feature Evaluation
+
+The analysis and quality features were evaluated against the current `refactor-cli`
+source tree on 2026-09-16. The configured scope was `src/refactor_cli`, with
+`.eval` excluded from dependency qualified-name results.
+
+### Evaluation commands
+
+Run these commands from the repository root:
+
+```bash
+refactor-cli files
+refactor-cli tree --print
+refactor-cli quality-report \
+  --config .refactor/config.json \
+  --scope-path src/refactor_cli \
+  --output-dir .refactor/analysis/quality
+refactor-cli candidate-phase-a --config .refactor/config.json
+refactor-cli candidate-report --config .refactor/config.json
+refactor-cli candidate-search \
+  --config .refactor/config.json \
+  --semantic-query 'dependency,module,quality metrics' \
+  --label Function \
+  --limit 20
+```
+
+### Generated evaluation files
+
+| File | Feature | Evaluation value |
+|---|---|---|
+| `.refactor/tree.yaml` | Structural tree | Persistent inventory used to plan and verify moves |
+| `.refactor/analysis/quality/quality.json` | Native quality | Machine-readable dependencies, complexity, duplicates, unused functions, and move candidates |
+| `.refactor/analysis/quality/quality.md` | Native quality | Human-readable quality findings |
+| `.refactor/analysis/candidates/source_index.json` | Source indexing | Index coverage, exclusions, node/edge counts, and parse warnings |
+| `.refactor/analysis/candidates/dependency_graph.json` | Dependency graph | Scoped raw `CALLS`, `IMPORTS`, and `INHERITS` edges |
+| `.refactor/analysis/candidates/semantic_retrieval.json` | Semantic retrieval | Ranked and grouped discovery results |
+| `.refactor/analysis/candidates/architecture_report.json` | Architecture report | Hotspots, clusters, entry points, and graph summaries |
+| `.refactor/analysis/candidates/summary.json` | Phase A orchestration | Module-level `OK`, `FAIL`, or `SKIP` status |
+| `.refactor/analysis/candidates/report.md` | Candidate report | Consolidated interpretation of all Phase A artifacts |
+
+`candidate-search` prints focused JSON to the terminal and does not create an
+artifact unless its output is redirected by the caller.
+
+### Results and interpretation
+
+| Feature | Result | Assessment |
+|---|---|---|
+| Configured file discovery | 18 Python files | Reliable project-scope input |
+| Structural tree | 18 files; root reduced to 16 top-level nodes | Good planning and post-refactor verification boundary |
+| Native quality report | 18 modules, no parse errors, 7 move candidates, 0 duplicate groups, 66 unused public functions | Useful local baseline; heuristics need trend tracking before being treated as gates |
+| Source index | `OK`; 45,392 indexed nodes and 194,841 indexed edges; 60 partial parses reported | Operationally successful, but the index is much broader than the package scope |
+| Scoped architecture report | 205 nodes and 539 edges; 157 functions; 217 calls; 80 imports | Strongest high-level architecture view |
+| Scoped dependency graph | `OK`; 455 returned edge rows | Useful for concrete relationship inspection |
+| Semantic retrieval | `OK`; 204 matching structural entries in the Phase A artifact | Helpful for discovery, but rankings are affected by corpus noise |
+| Candidate report | 379-line Markdown report | Good artifact for human inspection and handoff |
+| Focused candidate search | `OK`; 157 total matches, 20 returned | Useful interactively; semantic results included `.eval` entries and require filtering |
+| CodeRAG validation | `SKIP` | Disabled by configuration, therefore unevaluated |
+
+### Refinement plan
+
+1. **Isolate the indexed corpus.** Ensure Codebase Memory indexing honors the
+  configured source scope and does not expose `.eval` or vendored evaluation data
+  to semantic ranking. Add a regression fixture that fails when an excluded path
+  appears in candidate output.
+2. **Make scope filtering consistent.** Apply the same path and qualified-name
+  filtering to source indexing, semantic retrieval, architecture summaries, and
+  `candidate-search`, then report the number of discarded rows.
+3. **Add quality baselines.** Support a checked-in baseline and a comparison mode
+  for complexity, fan-in/fan-out, duplicate groups, unused functions, parse errors,
+  and cycle count. Report regressions separately from informational findings.
+4. **Improve native metrics.** Add Radon-style cyclomatic complexity and
+  maintainability indicators, while retaining the current dependency and move
+  signals as the refactoring-specific layer.
+5. **Strengthen duplicate and unused analysis.** Add token-level duplicate detection,
+  import-aware symbol references, and explicit dynamic-registration adapters rather
+  than relying only on the current conservative AST heuristics.
+6. **Evaluate optional providers explicitly.** Add a documented CodeRAG evaluation
+  run and distinguish `SKIP`, `UNAVAILABLE`, `FAIL`, and `OK` in the readiness
+  summary.
+7. **Add feature tests around artifacts.** Validate JSON schemas, report sections,
+  source links, Mermaid syntax, scope exclusions, and stable status values in
+  focused tests.
+8. **Continue structural extraction.** Move the remaining candidate settings and
+  orchestration from `__init__.py` into the CLI/config/workflow boundaries using
+  one cohesive `refactor-cli apply-tree-edit` operation at a time.
+
+The next highest-value refinement is corpus isolation. The evaluation shows that
+the analysis algorithms work, but semantic ranking cannot yet be treated as a clean
+refactoring recommendation until excluded evaluation data is removed or filtered
+at the indexing boundary.
+
 ## Working Rules
 
 - change one cohesive slice at a time
