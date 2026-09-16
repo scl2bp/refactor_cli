@@ -271,7 +271,7 @@ def cmd_quality_gate(args: argparse.Namespace) -> int:
     project_root = _resolve_optional_project_root(
         args.project_root, config_path, config
     )
-    output_dir = Path(args.output_dir or ".refactor/analysis/quality")
+    output_dir = Path(args.output_dir or ".refactor/analysis/gate")
     if not output_dir.is_absolute():
         output_dir = (project_root / output_dir).resolve()
     scope_path = args.scope_path or analysis.get("scope_path") or "src"

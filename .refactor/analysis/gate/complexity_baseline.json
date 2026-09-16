@@ -1,0 +1,1493 @@
+{
+  "schema_version": 2,
+  "generated_at_utc": "2026-09-16T19:19:49+00:00",
+  "paths": [
+    "src/refactor_cli"
+  ],
+  "python_files": 23,
+  "total_loc": 5120,
+  "total_sloc": 4318,
+  "total_blank": 717,
+  "avg_mi": 53.686,
+  "avg_cc": 5.293,
+  "p95_cc": 15.0,
+  "counts_by_rank": {
+    "A": 120,
+    "B": 35,
+    "C": 16,
+    "D": 2,
+    "E": 0,
+    "F": 1
+  },
+  "d_or_worse_blocks": 3,
+  "f_blocks": 1,
+  "parse_error_files": [],
+  "blocks": [
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "split_nodes_by_symbol",
+      "line": 19,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_target_module",
+      "line": 33,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_updated_source",
+      "line": 44,
+      "complexity": 15.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "apply_unified_diff_to_text",
+      "line": 75,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_symbol_index",
+      "line": 168,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "tree_entry_map",
+      "line": 177,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "choose_move_from_trees",
+      "line": 181,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_operation_from_tree_delta",
+      "line": 217,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "apply_operation_to_tree_doc",
+      "line": 231,
+      "complexity": 11.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "verify_moved_symbols",
+      "line": 264,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "tree_docs_differ",
+      "line": 274,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_after_tree_from_edit",
+      "line": 280,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "detect_file_deletions_from_trees",
+      "line": 315,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "apply_extract_top_level_symbols",
+      "line": 321,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "_strip_self_imports",
+      "line": 346,
+      "complexity": 10.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "apply_extract_top_level_symbols_emend",
+      "line": 399,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "run_tree_transition",
+      "line": 449,
+      "complexity": 25.0,
+      "rank": "D"
+    },
+    {
+      "file": "src/refactor_cli/safeguards.py",
+      "name": "post_apply_safeguards",
+      "line": 11,
+      "complexity": 6.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "_python_module_available",
+      "line": 8,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "resolve_emend_runner",
+      "line": 12,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "ensure_runtime_dependencies",
+      "line": 29,
+      "complexity": 6.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "run_formatter_on_file",
+      "line": 56,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "run_compile_check_on_file",
+      "line": 61,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "run_autoimport_on_file",
+      "line": 66,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "run_lint_check_on_file",
+      "line": 80,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/runtime_tools.py",
+      "name": "_run_ruff_fix_imports",
+      "line": 108,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "ensure_parent",
+      "line": 8,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "load_json",
+      "line": 12,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "write_json",
+      "line": 16,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "load_yaml",
+      "line": 21,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "write_yaml",
+      "line": 27,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "yaml_text",
+      "line": 33,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "archive_patch",
+      "line": 37,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "load_config",
+      "line": 8,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "resolve_project_root",
+      "line": 16,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "discover_python_files",
+      "line": 21,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "load_module",
+      "line": 42,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "statement_name",
+      "line": 46,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "is_import_statement",
+      "line": 60,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "render_statements",
+      "line": 64,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "build_tree",
+      "line": 73,
+      "complexity": 6.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "print_tree",
+      "line": 99,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/discovery.py",
+      "name": "generate_tree_payload",
+      "line": 108,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_extract_text_content",
+      "line": 16,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_architecture_text",
+      "line": 26,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_parse_section_counts",
+      "line": 30,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_parse_section_lines",
+      "line": 52,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_parse_scalar_value",
+      "line": 67,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_status_label",
+      "line": 75,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_trust_status",
+      "line": 85,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_filter_relation_rows",
+      "line": 101,
+      "complexity": 10.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_cbm_module_name",
+      "line": 122,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_compare_ast_cbm_imports",
+      "line": 136,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_artifact_size_rows",
+      "line": 165,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_top_local_groups",
+      "line": 172,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_group_summary",
+      "line": 190,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_noise_summary",
+      "line": 207,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_usage_guidance",
+      "line": 237,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_detail_options_lines",
+      "line": 246,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_query_profiles",
+      "line": 256,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_profile_terms",
+      "line": 282,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_profile_scope",
+      "line": 292,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_configured_semantic_profiles_summary",
+      "line": 296,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_configured_semantic_profiles_table",
+      "line": 351,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_configured_semantic_profile_findings",
+      "line": 366,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scope_qn_prefix",
+      "line": 393,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scope_filter",
+      "line": 398,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_parse_relation_rows",
+      "line": 402,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_normalize_scoped_name",
+      "line": 427,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_profile_payload",
+      "line": 435,
+      "complexity": 26.0,
+      "rank": "D"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_structural_profile_payload",
+      "line": 511,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_structural_search_payload",
+      "line": 522,
+      "complexity": 10.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_architecture",
+      "line": 551,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_dependency_edges",
+      "line": 566,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_module_dependency_edges",
+      "line": 583,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_class_method_edges",
+      "line": 601,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_class_inheritance_edges",
+      "line": 618,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scoped_semantic_search",
+      "line": 636,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_dependency_rows_from_text",
+      "line": 658,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_short_name",
+      "line": 662,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_module_name_for_file",
+      "line": 666,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_fallback_dependency_rows",
+      "line": 678,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_baseline_dependency_rows",
+      "line": 719,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_search_hit_dependency_rows",
+      "line": 729,
+      "complexity": 15.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_status",
+      "line": 773,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_artifact_sizes",
+      "line": 782,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_scoped_labels",
+      "line": 790,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_scoped_edges",
+      "line": 798,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_relation_counters",
+      "line": 814,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_top_counter_lines",
+      "line": 849,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_entry_point_lines",
+      "line": 853,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_class_surface_lines",
+      "line": 858,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_optional_demo_artifacts_section",
+      "line": 866,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_structural_hits",
+      "line": 889,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_mermaid_semantic_signal",
+      "line": 917,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_candidate_input_rows",
+      "line": 929,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_scope_contract",
+      "line": 978,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_markdown_input_table",
+      "line": 1011,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_markdown_profile_table",
+      "line": 1023,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_search_hit_dependency_block",
+      "line": 1035,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_example_edge_lines",
+      "line": 1047,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_line_list",
+      "line": 1061,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "build_candidate_report",
+      "line": 1065,
+      "complexity": 63.0,
+      "rank": "F"
+    },
+    {
+      "file": "src/refactor_cli/tree_codec.py",
+      "name": "_node_to_compact",
+      "line": 8,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/tree_codec.py",
+      "name": "_compact_to_node",
+      "line": 16,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/tree_codec.py",
+      "name": "write_tree_yaml",
+      "line": 29,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/tree_codec.py",
+      "name": "load_tree_yaml",
+      "line": 43,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_resolve_candidate_phase_a_settings",
+      "line": 89,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_resolve_candidate_report_settings",
+      "line": 159,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_project_name_default",
+      "line": 211,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_parse_semantic_query",
+      "line": 218,
+      "complexity": 12.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_parse_cbm_options",
+      "line": 236,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_profile_terms_setting",
+      "line": 256,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_resolve_candidate_search_settings",
+      "line": 266,
+      "complexity": 14.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "choose_operation",
+      "line": 347,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "extract_paths_from_tree_patch",
+      "line": 382,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_init",
+      "line": 397,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_files",
+      "line": 458,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_tree",
+      "line": 471,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_format",
+      "line": 487,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_apply_tree_patch",
+      "line": 510,
+      "complexity": 13.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_apply_tree_edit",
+      "line": 590,
+      "complexity": 13.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "main",
+      "line": 675,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_candidate_phase_a",
+      "line": 29,
+      "complexity": 12.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_candidate_report",
+      "line": 150,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_candidate_evaluate",
+      "line": 174,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_candidate_search",
+      "line": 196,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_internal_dependencies_report",
+      "line": 238,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/cli/commands.py",
+      "name": "cmd_quality_gate",
+      "line": 267,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/cli/parser.py",
+      "name": "build_parser",
+      "line": 24,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_load_optional_config",
+      "line": 35,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_candidate_analysis_config",
+      "line": 41,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_config_or_default",
+      "line": 46,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_resolve_path_setting",
+      "line": 54,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_resolve_optional_project_root",
+      "line": 62,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_find_default_config_path",
+      "line": 72,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_semantic_terms_setting",
+      "line": 81,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_exclude_substrings_setting",
+      "line": 89,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_semantic_query_profiles_setting",
+      "line": 95,
+      "complexity": 12.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/config/settings.py",
+      "name": "_load_summary_if_present",
+      "line": 125,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/scope_baseline.py",
+      "name": "_module_name",
+      "line": 8,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/scope_baseline.py",
+      "name": "_resolve_relative",
+      "line": 18,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/scope_baseline.py",
+      "name": "_import_names",
+      "line": 25,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/scope_baseline.py",
+      "name": "collect_scope_baseline",
+      "line": 42,
+      "complexity": 20.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/dependency_graph.py",
+      "name": "collect_dependency_graph",
+      "line": 15,
+      "complexity": 6.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "name": "resolve_cbm_binary",
+      "line": 8,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "name": "_flag_name",
+      "line": 28,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "name": "_flag_value",
+      "line": 32,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "name": "_extract_json_line",
+      "line": 40,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/candidate_tools.py",
+      "name": "run_cbm_tool",
+      "line": 52,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/source_index.py",
+      "name": "_project_name_from_root",
+      "line": 19,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/source_index.py",
+      "name": "_stage_configured_files",
+      "line": 23,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/source_index.py",
+      "name": "run_source_index",
+      "line": 38,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/source_index.py",
+      "name": "run_coderag_validate_only",
+      "line": 107,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/architecture_report.py",
+      "name": "collect_architecture_report",
+      "line": 7,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/semantic_retrieval.py",
+      "name": "collect_semantic_retrieval",
+      "line": 7,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_python_files",
+      "line": 11,
+      "complexity": 5.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_module_name",
+      "line": 21,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_resolve_relative",
+      "line": 30,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_nearest",
+      "line": 36,
+      "complexity": 3.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_imports",
+      "line": 45,
+      "complexity": 14.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_complexity",
+      "line": 69,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_normalized_hash",
+      "line": 76,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_unused_functions",
+      "line": 94,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "collect_quality_report",
+      "line": 120,
+      "complexity": 20.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_cycles",
+      "line": 178,
+      "complexity": 9.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_dependency_paths",
+      "line": 194,
+      "complexity": 7.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_mermaid",
+      "line": 209,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "render_quality_report",
+      "line": 221,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "write_quality_report",
+      "line": 255,
+      "complexity": 1.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/evaluation.py",
+      "name": "evaluate_candidate_artifacts",
+      "line": 28,
+      "complexity": 8.0,
+      "rank": "B"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_gate.py",
+      "name": "_load_upstream_gate",
+      "line": 9,
+      "complexity": 4.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_gate.py",
+      "name": "run_quality_gate",
+      "line": 25,
+      "complexity": 2.0,
+      "rank": "A"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality.py",
+      "name": "quality_summary",
+      "line": 6,
+      "complexity": 7.0,
+      "rank": "B"
+    }
+  ],
+  "top_blocks": [
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "build_candidate_report",
+      "line": 1065,
+      "complexity": 63.0,
+      "rank": "F"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_semantic_profile_payload",
+      "line": 435,
+      "complexity": 26.0,
+      "rank": "D"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "run_tree_transition",
+      "line": 449,
+      "complexity": 25.0,
+      "rank": "D"
+    },
+    {
+      "file": "src/refactor_cli/analysis/scope_baseline.py",
+      "name": "collect_scope_baseline",
+      "line": 42,
+      "complexity": 20.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "collect_quality_report",
+      "line": 120,
+      "complexity": 20.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "apply_unified_diff_to_text",
+      "line": 75,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_fallback_dependency_rows",
+      "line": 678,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_unused_functions",
+      "line": 94,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "render_quality_report",
+      "line": 221,
+      "complexity": 17.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "build_updated_source",
+      "line": 44,
+      "complexity": 15.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_search_hit_dependency_rows",
+      "line": 729,
+      "complexity": 15.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "_resolve_candidate_search_settings",
+      "line": 266,
+      "complexity": 14.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "name": "_imports",
+      "line": 45,
+      "complexity": 14.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_apply_tree_patch",
+      "line": 510,
+      "complexity": 13.0,
+      "rank": "C"
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "cmd_apply_tree_edit",
+      "line": 590,
+      "complexity": 13.0,
+      "rank": "C"
+    }
+  ],
+  "coverage_pct": null,
+  "coverage_files": 0,
+  "low_coverage_files": [],
+  "coverage_error": null,
+  "coverage_source": null,
+  "ruff_violations": 35,
+  "ruff_by_category": {
+    "I": 10,
+    "F": 12,
+    "S": 1,
+    "P": 7,
+    "R": 2,
+    "D": 2,
+    "B": 1
+  },
+  "ruff_error": null,
+  "duplicate_block_pairs": 3,
+  "duplicate_blocks": [
+    {
+      "file_a": "src/refactor_cli/candidate_report.py",
+      "name_a": "_profile_terms",
+      "line_a": 282,
+      "file_b": "src/refactor_cli/__init__.py",
+      "name_b": "_profile_terms_setting",
+      "line_b": 256,
+      "clone_count": 2,
+      "body_size": 103
+    },
+    {
+      "file_a": "src/refactor_cli/candidate_report.py",
+      "name_a": "_scoped_module_dependency_edges",
+      "line_a": 583,
+      "file_b": "src/refactor_cli/candidate_report.py",
+      "name_b": "_scoped_class_inheritance_edges",
+      "line_b": 618,
+      "clone_count": 2,
+      "body_size": 64
+    },
+    {
+      "file_a": "src/refactor_cli/candidate_report.py",
+      "name_a": "_scoped_dependency_edges",
+      "line_a": 566,
+      "file_b": "src/refactor_cli/candidate_report.py",
+      "name_b": "_scoped_class_method_edges",
+      "line_b": 601,
+      "clone_count": 2,
+      "body_size": 56
+    }
+  ],
+  "classes_analyzed": 1,
+  "avg_lcom": 1.0,
+  "low_cohesion_classes": [
+    {
+      "file": "src/refactor_cli/analysis/quality_report.py",
+      "class": "Normalize",
+      "line": 77,
+      "lcom": 1.0
+    }
+  ],
+  "public_functions_analyzed": 78,
+  "avg_params": 1.885,
+  "high_param_count": 4,
+  "untyped_public_functions": 0,
+  "high_param_functions": [
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "build_candidate_report",
+      "line": 1065,
+      "params": 7
+    },
+    {
+      "file": "src/refactor_cli/transforms.py",
+      "name": "run_tree_transition",
+      "line": 449,
+      "params": 6
+    },
+    {
+      "file": "src/refactor_cli/analysis/dependency_graph.py",
+      "name": "collect_dependency_graph",
+      "line": 15,
+      "params": 6
+    },
+    {
+      "file": "src/refactor_cli/analysis/semantic_retrieval.py",
+      "name": "collect_semantic_retrieval",
+      "line": 7,
+      "params": 6
+    }
+  ],
+  "unused_function_count": 6,
+  "unused_functions": [
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "write_yaml",
+      "line": 27,
+      "end_line": 30,
+      "kind": "function",
+      "owner": null
+    },
+    {
+      "file": "src/refactor_cli/file_io.py",
+      "name": "yaml_text",
+      "line": 33,
+      "end_line": 34,
+      "kind": "function",
+      "owner": null
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_structural_profile_payload",
+      "line": 511,
+      "end_line": 519,
+      "kind": "function",
+      "owner": null
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_fallback_dependency_rows",
+      "line": 678,
+      "end_line": 716,
+      "kind": "function",
+      "owner": null
+    },
+    {
+      "file": "src/refactor_cli/candidate_report.py",
+      "name": "_markdown_profile_table",
+      "line": 1023,
+      "end_line": 1032,
+      "kind": "function",
+      "owner": null
+    },
+    {
+      "file": "src/refactor_cli/__init__.py",
+      "name": "choose_operation",
+      "line": 347,
+      "end_line": 379,
+      "kind": "function",
+      "owner": null
+    }
+  ],
+  "unused_error": null
+}
