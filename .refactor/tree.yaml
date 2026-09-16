@@ -37,6 +37,7 @@ files:
   - FunctionDef cmd_candidate_phase_a
   - FunctionDef cmd_candidate_report
   - FunctionDef cmd_candidate_search
+  - FunctionDef cmd_quality_report
   - FunctionDef build_parser
   - FunctionDef main
   src/refactor_cli/__main__.py: []
@@ -51,6 +52,21 @@ files:
   src/refactor_cli/analysis/dependency_graph.py:
   - SimpleStatementLine EDGE_QUERY
   - FunctionDef collect_dependency_graph
+  src/refactor_cli/analysis/quality_report.py:
+  - FunctionDef _python_files
+  - FunctionDef _module_name
+  - FunctionDef _resolve_relative
+  - FunctionDef _nearest
+  - FunctionDef _imports
+  - FunctionDef _complexity
+  - FunctionDef _normalized_hash
+  - FunctionDef _unused_functions
+  - FunctionDef collect_quality_report
+  - FunctionDef _cycles
+  - FunctionDef _dependency_paths
+  - FunctionDef _mermaid
+  - FunctionDef render_quality_report
+  - FunctionDef write_quality_report
   src/refactor_cli/analysis/semantic_retrieval.py:
   - FunctionDef collect_semantic_retrieval
   src/refactor_cli/analysis/source_index.py:
