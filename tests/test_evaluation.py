@@ -33,7 +33,7 @@ def test_evaluation_uses_report_semantic_scope_accounting(tmp_path: Path):
         "non_local": 0,
         "discarded": 2,
     }
-    assert result["checks"]["semantic_results_are_local"] is True
+    assert result["checks"]["semantic_results_are_local"] is False
 
 
 def _write_required_artifacts(input_dir: Path, semantic: dict) -> None:

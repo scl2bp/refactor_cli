@@ -73,7 +73,10 @@ def evaluate_candidate_artifacts(
             and index.get("not_indexed_files_count", 0) == 0
         ),
         "ast_cbm_imports_agree": not comparison["missing_from_cbm"] and not comparison["extra_in_cbm"],
-        "semantic_results_are_local": semantic_counts["non_local"] == 0,
+        "semantic_results_are_local": (
+            semantic_counts["non_local"] == 0
+            and semantic_counts["discarded"] == 0
+        ),
     }
     status = "OK" if all(checks.values()) else "DEGRADED"
     result = {
