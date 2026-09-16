@@ -16,7 +16,8 @@ from refactor_cli.discovery import discover_python_files
 from refactor_cli.analysis.architecture_report import collect_architecture_report
 from refactor_cli.analysis.candidate_tools import run_cbm_tool
 from refactor_cli.analysis.dependency_graph import collect_dependency_graph
-from refactor_cli.analysis.quality_report import write_quality_report
+from refactor_cli.analysis.internal_dependencies_report import write_quality_report
+from refactor_cli.analysis.quality_gate import run_quality_gate
 from refactor_cli.analysis.semantic_retrieval import collect_semantic_retrieval
 from refactor_cli.analysis.source_index import run_coderag_validate_only, run_source_index
 from refactor_cli.analysis.scope_baseline import collect_scope_baseline
@@ -234,7 +235,7 @@ def cmd_candidate_search(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_quality_report(args: argparse.Namespace) -> int:
+def cmd_internal_dependencies_report(args: argparse.Namespace) -> int:
     config_path = Path(args.config)
     config = _load_optional_config(config_path)
     analysis = _candidate_analysis_config(config)
@@ -251,8 +252,8 @@ def cmd_quality_report(args: argparse.Namespace) -> int:
     payload = write_quality_report(
         project_root=project_root,
         scope_path=scope_path,
-        json_path=output_dir / "quality.json",
-        markdown_path=output_dir / "quality.md",
+        json_path=output_dir / "internal_module_dependencies.json",
+        markdown_path=output_dir / "internal_module_dependencies.md",
     )
     print("QUALITY REPORT WRITTEN")
     print(f"  scope: {scope_path}")
@@ -261,3 +262,34 @@ def cmd_quality_report(args: argparse.Namespace) -> int:
     print(f"  duplicate groups: {len(payload['duplicate_groups'])}")
     print(f"  unused functions: {len(payload['unused_functions'])}")
     return 0
+
+
+def cmd_quality_gate(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    config = _load_optional_config(config_path)
+    analysis = _candidate_analysis_config(config)
+    project_root = _resolve_optional_project_root(
+        args.project_root, config_path, config
+    )
+    output_dir = Path(args.output_dir or ".refactor/analysis/quality")
+    if not output_dir.is_absolute():
+        output_dir = (project_root / output_dir).resolve()
+    scope_path = args.scope_path or analysis.get("scope_path") or "src"
+    paths = args.paths or [scope_path]
+    arguments = [
+        "--repo-root", str(project_root),
+        "--paths", *paths,
+        "--baseline-path", str(output_dir / "complexity_baseline.json"),
+        "--stats-path", str(output_dir / "complexity_current.json"),
+        "--report-path", str(output_dir / "complexity_report.md"),
+    ]
+    if args.refresh_baseline:
+        arguments.append("--refresh-baseline")
+    if args.no_coverage:
+        arguments.append("--no-coverage")
+    if args.fail_on_gate:
+        arguments.append("--strict")
+    return run_quality_gate(arguments)
+
+
+cmd_quality_report = cmd_quality_gate

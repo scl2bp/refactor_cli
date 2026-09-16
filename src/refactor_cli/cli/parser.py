@@ -5,6 +5,8 @@ from refactor_cli.cli.commands import (
     cmd_candidate_evaluate,
     cmd_candidate_search,
     cmd_quality_report,
+    cmd_internal_dependencies_report,
+    cmd_quality_gate,
 )
 from refactor_cli import DEFAULT_CONFIG
 from refactor_cli import cmd_init
@@ -235,14 +237,46 @@ def build_parser() -> argparse.ArgumentParser:
     )
     candidate_search_parser.set_defaults(func=cmd_candidate_search)
 
+    internal_parser = subparsers.add_parser(
+        "internal-dependencies-report",
+        help="Report internal module dependencies, cycles, fan-in, and fan-out",
+    )
+    internal_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    internal_parser.add_argument("--project-root", default=None)
+    internal_parser.add_argument("--scope-path", default=None)
+    internal_parser.add_argument("--output-dir", default=None)
+    internal_parser.set_defaults(func=cmd_internal_dependencies_report)
+
     quality_parser = subparsers.add_parser(
-        "quality-report",
-        help="Analyze module dependencies, cycles, complexity, duplicates, unused functions, and move candidates",
+        "quality-gate",
+        help="Generate a complexity report and enforce regression thresholds against a baseline",
     )
     quality_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
     quality_parser.add_argument("--project-root", default=None)
     quality_parser.add_argument("--scope-path", default=None)
+    quality_parser.add_argument("--paths", nargs="+", default=None)
     quality_parser.add_argument("--output-dir", default=None)
-    quality_parser.set_defaults(func=cmd_quality_report)
+    quality_parser.add_argument("--refresh-baseline", action="store_true")
+    quality_parser.add_argument("--no-coverage", action="store_true")
+    quality_parser.add_argument(
+        "--fail-on-gate",
+        action="store_true",
+        help="Return non-zero when the baseline is missing or the quality gate fails",
+    )
+    quality_parser.set_defaults(func=cmd_quality_gate)
+
+    legacy_quality_parser = subparsers.add_parser(
+        "quality-report",
+        help="Compatibility alias for quality-gate",
+    )
+    legacy_quality_parser.add_argument("--config", default=str(DEFAULT_CONFIG))
+    legacy_quality_parser.add_argument("--project-root", default=None)
+    legacy_quality_parser.add_argument("--scope-path", default=None)
+    legacy_quality_parser.add_argument("--paths", nargs="+", default=None)
+    legacy_quality_parser.add_argument("--output-dir", default=None)
+    legacy_quality_parser.add_argument("--refresh-baseline", action="store_true")
+    legacy_quality_parser.add_argument("--no-coverage", action="store_true")
+    legacy_quality_parser.add_argument("--fail-on-gate", action="store_true")
+    legacy_quality_parser.set_defaults(func=cmd_quality_report)
 
     return parser

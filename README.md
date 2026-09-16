@@ -92,8 +92,11 @@ Available commands:
 - `apply-tree-edit`
 - `candidate-phase-a`
 - `candidate-report`
+- `candidate-evaluate`
 - `candidate-search`
-- `quality-report`
+- `internal-dependencies-report`
+- `quality-gate`
+- `quality-report` (compatibility alias for `quality-gate`)
 
 `candidate-report` now defaults to an architecture-first summary. Demo-style semantic
 example sections are omitted unless `--include-demo-artifacts` is passed.
@@ -116,21 +119,29 @@ refinement decisions are maintained in [docs/refactoring-plan.md](docs/refactori
 |---|---|---|---|---|
 | `files` | Developer or LLM agent | Is the configured project boundary correct? | Terminal file list | Required scope check |
 | `tree` | Developer or LLM agent | Which top-level symbols can be moved? | `.refactor/tree.yaml` | Structural planning and verification |
-| `quality-report` | Developer or CI-adjacent workflow | Which modules need inspection? | `quality.json`, `quality.md` | Local heuristic triage, not a gate |
+| `internal-dependencies-report` | Developer or refactoring analysis | Which modules depend on which other modules? | `internal_module_dependencies.json`, `internal_module_dependencies.md` | Graph report; not a quality gate |
+| `quality-gate` | Developer or CI workflow | Did complexity or quality metrics regress against baseline? | `complexity_current.json`, `complexity_baseline.json`, `complexity_report.md` | Baseline-aware gate with optional nonzero failure |
 | `candidate-phase-a` | Developer or LLM agent | Which relationships and architecture areas need deeper analysis? | Candidate JSON artifacts | Optional external analysis |
 | `candidate-report` | Developer, reviewer, or LLM agent | Which raw finding should be inspected next? | `report.md` | Presentation layer |
 | `candidate-search` | Developer or LLM agent | What focused architectural hypothesis should be checked? | Terminal JSON | Exploratory; not automation-safe |
 
-The normal data flow is `files` -> `tree` -> `quality-report`, with optional
+The normal data flow is `files` -> `tree` -> `internal-dependencies-report` -> `quality-gate`, with optional
 Codebase Memory enrichment through `candidate-phase-a`; `candidate-report` presents
 Phase A artifacts and `candidate-search` supports focused follow-up questions.
 
-The current baseline was produced from the checked-out repository on 2026-09-16
-using `.refactor/config.json` and scope `src/refactor_cli`. It found 18 Python
-files, 7 native move candidates, and no duplicate groups. Phase A completed its
-enabled adapters as `OK`, while semantic search still exposed `.eval` paths. These
-are observations from one run, not acceptance thresholds; see the plan for the
-exact commands, evidence checks, negative-path gaps, and improvement priorities.
+Create a quality baseline once, then enforce regressions:
+
+```bash
+refactor-cli quality-gate --refresh-baseline --no-coverage
+refactor-cli quality-gate --fail-on-gate --no-coverage
+```
+
+`quality-report` remains available as a compatibility alias, but new workflows
+should use `quality-gate` so the command name matches its behavior.
+
+The candidate artifacts and quality baselines are run-specific outputs. The quality
+gate compares the current snapshot with `complexity_baseline.json`; it does not
+pretend that a static report is itself an acceptance decision.
 
 ## Quick Start
 

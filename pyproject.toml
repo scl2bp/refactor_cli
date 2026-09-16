@@ -14,6 +14,7 @@ dependencies = [
   "libcst>=1.5.0",
   "ruff>=0.6.0",
   "pyyaml>=6.0",
+  "radon>=6.0",
 ]
 
 [project.optional-dependencies]
