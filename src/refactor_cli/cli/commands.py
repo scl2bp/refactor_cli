@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from refactor_cli.config.settings import (
     _candidate_analysis_config,
+    _configured_scope_paths,
     _config_or_default,
     _load_optional_config,
     _resolve_optional_project_root,
@@ -275,8 +276,9 @@ def cmd_quality_gate(args: argparse.Namespace) -> int:
     output_dir = Path(args.output_dir or ".refactor/analysis/gate")
     if not output_dir.is_absolute():
         output_dir = (project_root / output_dir).resolve()
-    scope_path = args.scope_path or analysis.get("scope_path") or "src"
-    paths = args.paths or [scope_path]
+    scope_path = args.scope_path or analysis.get("scope_path")
+    configured_paths = _configured_scope_paths(config)
+    paths = args.paths or ([scope_path] if scope_path else configured_paths or ["src"])
     arguments = [
         "--repo-root", str(project_root),
         "--paths", *paths,

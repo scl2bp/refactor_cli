@@ -31,3 +31,7 @@ refactor-cli = "refactor_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/refactor_cli"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"vendor/upstream_analysis/quality_gate_report.py" = "refactor_cli/vendor/upstream_analysis/quality_gate_report.py"
+"vendor/upstream_analysis/find_unused.py" = "refactor_cli/vendor/upstream_analysis/find_unused.py"

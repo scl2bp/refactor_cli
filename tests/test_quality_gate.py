@@ -1,6 +1,17 @@
 from pathlib import Path
 
 from refactor_cli.analysis.quality_gate import run_quality_gate
+from refactor_cli.config.settings import _configured_scope_paths
+
+
+def test_configured_scope_paths_infer_directories_from_include_patterns():
+    config = {
+        "python_files": {
+            "include": ["backend/**/*.py", "tools/*.py", "**/*.py"]
+        }
+    }
+
+    assert _configured_scope_paths(config) == ["backend", "tools", "."]
 
 
 def test_quality_gate_creates_and_enforces_baseline(tmp_path: Path):

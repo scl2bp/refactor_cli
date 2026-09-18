@@ -51,6 +51,24 @@ def _config_or_default(value: Any, fallback: Any) -> Any:
     return value
 
 
+def _configured_scope_paths(config: dict[str, Any]) -> list[str]:
+    """Return directory scopes inferred from configured Python include patterns."""
+    file_config = config.get("python_files", {})
+    include = file_config.get("include", []) if isinstance(file_config, dict) else []
+    scopes: list[str] = []
+    for pattern in include:
+        parts = Path(str(pattern).replace("\\", "/")).parts
+        prefix: list[str] = []
+        for part in parts:
+            if any(char in part for char in "*?["):
+                break
+            prefix.append(part)
+        scope = "/".join(prefix) or "."
+        if scope not in scopes:
+            scopes.append(scope)
+    return scopes
+
+
 def _resolve_path_setting(project_root: Path, value: str | None, default: Path) -> Path:
     raw = _config_or_default(value, str(default))
     path = Path(raw)

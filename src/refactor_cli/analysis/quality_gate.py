@@ -7,8 +7,16 @@ from types import ModuleType
 
 
 def _load_upstream_gate() -> ModuleType:
+    package_path = (
+        Path(__file__).resolve().parents[1]
+        / "vendor"
+        / "upstream_analysis"
+        / "quality_gate_report.py"
+    )
     repo_root = Path(__file__).resolve().parents[3]
-    script_path = repo_root / "vendor" / "upstream_analysis" / "quality_gate_report.py"
+    script_path = package_path
+    if not script_path.exists():
+        script_path = repo_root / "vendor" / "upstream_analysis" / "quality_gate_report.py"
     if not script_path.exists():
         raise FileNotFoundError(
             f"Vendored quality gate implementation not found: {script_path}"
