@@ -124,12 +124,17 @@ def _cbm_module_name(raw: str, scope_prefix: str, known_modules: set[str]) -> st
     if not text.startswith(scope_prefix):
         return None
     suffix = text[len(scope_prefix) :].lstrip(".")
+    module_part = suffix.split(".py", 1)[0]
+    candidates = [module_part]
+    if scope_prefix:
+        candidates.append(f"{scope_prefix.rsplit('.', 1)[-1]}.{module_part}")
     if suffix.startswith("__init__.py"):
-        candidate = scope_prefix.rsplit(".", 1)[-1]
-    else:
-        module_part = suffix.split(".py", 1)[0]
-        candidate = f"{scope_prefix.rsplit('.', 1)[-1]}.{module_part}"
-    matches = [module for module in known_modules if candidate == module or candidate.startswith(f"{module}.")]
+        candidates.append(scope_prefix.rsplit(".", 1)[-1])
+    matches = [
+        module
+        for module in known_modules
+        if any(candidate == module or candidate.startswith(f"{module}.") for candidate in candidates)
+    ]
     return max(matches, key=len) if matches else None
 
 
@@ -392,7 +397,11 @@ def _configured_semantic_profile_findings(rows: list[dict[str, Any]]) -> str:
 
 def _scope_qn_prefix(summary: dict[str, Any], scope_path: str) -> str:
     scope = summary.get("scope", {})
-    return scope.get("scope_qn_prefix") or scope_path.replace("/", ".")
+    return (
+        scope.get("scope_qn_prefix")
+        or scope_path.replace("/", ".")
+        or str(summary.get("project_name", "")).strip()
+    )
 
 
 def _scope_filter(alias: str, scope_prefix: str) -> str:
