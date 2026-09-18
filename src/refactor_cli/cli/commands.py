@@ -292,13 +292,15 @@ def cmd_quality_gate(args: argparse.Namespace) -> int:
         arguments.append("--no-coverage")
     else:
         coverage_json = output_dir / "coverage_current.json"
+        coverage_targets = [path for path in paths if path != "."] or ["."]
+        coverage_args = " ".join(f'--cov="{path}"' for path in coverage_targets)
         arguments.extend(
             [
                 "--coverage-command",
                 (
                     f'"{sys.executable}" -m coverage erase && '
                     f'"{sys.executable}" -m pytest -p no:cacheprovider '
-                    f'--cov=src/refactor_cli --cov-report=json:{coverage_json} -q'
+                    f'{coverage_args} --cov-report=json:"{coverage_json}" -q'
                 ),
                 "--coverage-json-path",
                 str(coverage_json),
