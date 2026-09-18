@@ -17,6 +17,7 @@ from refactor_cli.candidate_report import (
     _mermaid_structural_hits,
     _search_hit_dependency_block,
     _search_hit_dependency_rows,
+    _scope_qn_prefix,
 )
 
 
@@ -47,6 +48,12 @@ def test_ast_cbm_import_comparison_normalizes_symbol_qualified_rows():
     assert result["matched_edges"] == 1
     assert result["missing_from_cbm"] == []
     assert result["extra_in_cbm"] == []
+
+
+def test_scope_qn_prefix_uses_project_name_when_scope_is_empty():
+    assert _scope_qn_prefix(
+        {"project_name": "demo-project", "scope": {"scope_qn_prefix": ""}}, ""
+    ) == "demo-project"
 
 
 def test_fallback_dependency_rows_are_non_empty_for_package():
