@@ -39,6 +39,17 @@ def _import_names(tree: ast.AST, module: str) -> set[str]:
     return names
 
 
+def _module_aliases(modules: set[str]) -> dict[str, str]:
+    aliases: dict[str, str | None] = {}
+    for module in modules:
+        parts = module.split(".")
+        for index in range(len(parts)):
+            alias = ".".join(parts[index:])
+            previous = aliases.get(alias)
+            aliases[alias] = module if previous in (None, module) else None
+    return {alias: module for alias, module in aliases.items() if module is not None}
+
+
 def collect_scope_baseline(
     *, project_root: Path, scope_path: Path, files: list[Path]
 ) -> dict[str, Any]:
@@ -49,6 +60,7 @@ def collect_scope_baseline(
         path: _module_name(path, project_root, scope_path) for path in configured_files
     }
     known_modules = set(module_by_file.values())
+    aliases = _module_aliases(known_modules)
     parsed_files: list[str] = []
     parse_errors: list[dict[str, str]] = []
     imports: dict[str, set[str]] = {}
@@ -69,7 +81,10 @@ def collect_scope_baseline(
             candidates = [imported]
             while candidates[-1] and candidates[-1] not in known_modules:
                 candidates.append(candidates[-1].rpartition(".")[0])
-            target = next((candidate for candidate in candidates if candidate in known_modules), None)
+            target = next(
+                (aliases[candidate] for candidate in candidates if candidate in aliases),
+                None,
+            )
             if target and target != module:
                 internal.add(target)
             elif imported:

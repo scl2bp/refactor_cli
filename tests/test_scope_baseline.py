@@ -50,3 +50,22 @@ def test_scope_baseline_reports_parse_errors_without_dropping_scope_files(tmp_pa
         "external_imports": 1,
     }
     assert result["parse_errors"][0]["file"] == "src/demo_pkg/broken.py"
+
+
+def test_scope_baseline_resolves_top_level_imports_below_source_root(tmp_path: Path):
+    backend = tmp_path / "backend"
+    (backend / "api").mkdir(parents=True)
+    (backend / "domain").mkdir()
+    app = backend / "api" / "app.py"
+    config = backend / "domain" / "config.py"
+    app.write_text("from domain.config import load_config\n", encoding="utf-8")
+    config.write_text("def load_config():\n    return None\n", encoding="utf-8")
+
+    result = collect_scope_baseline(
+        project_root=tmp_path,
+        scope_path=tmp_path,
+        files=[app, config],
+    )
+
+    assert result["counts"]["internal_import_edges"] == 1
+    assert result["internal_import_edges"][0]["target"].endswith("backend.domain.config")

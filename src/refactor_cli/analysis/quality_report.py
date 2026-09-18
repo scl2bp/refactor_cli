@@ -42,7 +42,18 @@ def _nearest(name: str, known: set[str]) -> str | None:
     return None
 
 
-def _imports(tree: ast.AST, current: str, package: str, known: set[str]) -> set[str]:
+def _module_aliases(modules: set[str]) -> dict[str, str]:
+    aliases: dict[str, str | None] = {}
+    for module in modules:
+        parts = module.split(".")
+        for index in range(len(parts)):
+            alias = ".".join(parts[index:])
+            previous = aliases.get(alias)
+            aliases[alias] = module if previous in (None, module) else None
+    return {alias: module for alias, module in aliases.items() if module is not None}
+
+
+def _imports(tree: ast.AST, current: str, aliases: dict[str, str]) -> set[str]:
     result: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -59,10 +70,9 @@ def _imports(tree: ast.AST, current: str, package: str, known: set[str]) -> set[
         else:
             continue
         for name in names:
-            if name == package or name.startswith(f"{package}."):
-                target = _nearest(name, known)
-                if target and target != current:
-                    result.add(target)
+            target = aliases.get(_nearest(name, set(aliases)) or "")
+            if target and target != current:
+                result.add(target)
     return result
 
 
@@ -133,8 +143,9 @@ def collect_quality_report(*, project_root: Path, scope_path: Path) -> dict[str,
     modules = {
         _module_name(path, package_root, package): path for path in trees
     }
+    aliases = _module_aliases(set(modules))
     edges = {
-        module: _imports(trees[path], module, package, set(modules))
+        module: _imports(trees[path], module, aliases)
         for module, path in modules.items()
     }
     inbound = Counter(target for targets in edges.values() for target in targets)

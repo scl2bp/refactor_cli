@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from refactor_cli.analysis.quality_report import collect_quality_report, render_quality_report
+from refactor_cli.analysis.quality_report import (
+    collect_quality_report,
+    render_quality_report,
+)
 
 
 def test_quality_report_recovers_internal_module_dependencies(tmp_path: Path):
@@ -20,6 +23,23 @@ def test_quality_report_recovers_internal_module_dependencies(tmp_path: Path):
     assert api["imports"] == ["demo_pkg.core", "demo_pkg.helper"]
     assert report["cycles"] == []
     assert any(row["module"] == "demo_pkg.api" for row in report["move_candidates"])
+
+
+def test_quality_report_resolves_top_level_imports_below_source_root(tmp_path: Path):
+    backend = tmp_path / "backend"
+    (backend / "api").mkdir(parents=True)
+    (backend / "domain").mkdir()
+    (backend / "api" / "app.py").write_text(
+        "from domain.config import load_config\n", encoding="utf-8"
+    )
+    (backend / "domain" / "config.py").write_text(
+        "def load_config():\n    return None\n", encoding="utf-8"
+    )
+
+    report = collect_quality_report(project_root=tmp_path, scope_path=tmp_path)
+
+    app = next(row for row in report["modules"] if row["module"].endswith("backend.api.app"))
+    assert app["imports"] == [next(row["module"] for row in report["modules"] if row["file"] == "backend/domain/config.py")]
 
 
 def test_quality_report_renders_move_and_duplicate_sections():
